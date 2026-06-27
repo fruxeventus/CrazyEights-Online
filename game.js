@@ -11,6 +11,8 @@ const createName = $("#createName");
 const joinName = $("#joinName");
 const roomCodeInput = $("#roomCodeInput");
 const playerCount = $("#playerCount");
+const botDifficulty = $("#botDifficulty");
+const botButton = $("#botButton");
 const connection = $("#connection");
 const roomCodeLabel = $("#roomCodeLabel");
 const statusLabel = $("#statusLabel");
@@ -38,6 +40,7 @@ const winnerTitle = $("#winnerTitle");
 const winnerText = $("#winnerText");
 const closeWinButton = $("#closeWinButton");
 const turnOverlay = $("#turnOverlay");
+const chatPanel = $("#chatPanel");
 const chatMessages = $("#chatMessages");
 const chatForm = $("#chatForm");
 const chatInput = $("#chatInput");
@@ -56,6 +59,8 @@ let joinRenderedFor = "";
 let turnOverlayTimer = null;
 let dismissedWinKey = "";
 let pendingJackCardId = null;
+let botTurnInFlight = false;
+let lastBotTurnKey = "";
 
 const suitSymbols = {
   hearts: "♥",
@@ -84,6 +89,19 @@ createForm.addEventListener("submit", async (event) => {
   const result = await api("/api/create", {
     name,
     maxPlayers: Number(playerCount.value),
+    sessionId,
+  });
+  setRoomUrl(result.code, sessionId);
+  enterRoom(result.code);
+});
+
+botButton.addEventListener("click", async () => {
+  const name = cleanName(createName.value);
+  localStorage.setItem("pesten-name", name);
+  sessionId = crypto.randomUUID();
+  const result = await api("/api/create-bot", {
+    name,
+    difficulty: botDifficulty.value,
     sessionId,
   });
   setRoomUrl(result.code, sessionId);
@@ -251,15 +269,18 @@ function render() {
   const cannotPlay = isMyTurn && state.playableCardIds.length === 0;
   const mustDraw = isMyTurn && state.mustDrawPlayerId === me?.id;
 
+  roomScreen.classList.toggle("bot-room", Boolean(state.botMode));
   roomCodeLabel.textContent = state.code;
   statusLabel.textContent = state.phase === "waiting" ? `${state.players.length}/${state.maxPlayers} wachten` : phaseLabel(state.phase);
   youLabel.textContent = me ? me.name : "Toeschouwer";
-  sharePanel.hidden = !state.isHost || state.phase !== "waiting";
+  roomCodeLabel.closest("div").hidden = Boolean(state.botMode);
+  sharePanel.hidden = Boolean(state.botMode) || !state.isHost || state.phase !== "waiting";
   shareLink.textContent = roomLink();
-  startButton.hidden = !state.isHost || state.phase !== "waiting";
+  startButton.hidden = Boolean(state.botMode) || !state.isHost || state.phase !== "waiting";
   startButton.disabled = state.players.length < 2;
   hostWinButton.hidden = !state.canUseHostTools || state.phase === "finished";
   giveCardButton.hidden = !state.canUseHostTools || state.phase !== "playing";
+  chatPanel.hidden = Boolean(state.botMode);
   drawButton.disabled = !isMyTurn || (state.pendingDraw > 0 && mustDraw);
   deckCount.textContent = state.deckCount;
   turnInfo.textContent = turnLine(state, current);
@@ -269,7 +290,7 @@ function render() {
       const active = player.id === state.currentPlayerId ? " active" : "";
       const offline = player.connected ? "" : " offline";
       const you = player.isYou ? " (jij)" : "";
-      const presence = player.connected ? "verbonden" : "offline";
+      const presence = player.isBot ? "bot" : player.connected ? "verbonden" : "offline";
       return `<article class="player${active}${offline}" data-player-id="${escapeHtml(player.id)}">
         <strong>${escapeHtml(player.name)}${you}</strong>
         <span>${player.handCount} kaarten</span>
@@ -318,10 +339,11 @@ function render() {
   }
 
   if (state.notice) message.textContent = state.notice.text;
-  renderChat(state);
+  if (!state.botMode) renderChat(state);
   renderWinScreen(state);
   animateStateChanges(lastRenderedState, state);
   lastRenderedState = snapshotState(state);
+  scheduleBotTurn(state);
 }
 
 function renderJoin(errorText = "") {
@@ -365,6 +387,30 @@ function playerColor(playerId) {
   let hash = 0;
   for (const char of String(playerId || "")) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return colors[hash % colors.length];
+}
+
+function scheduleBotTurn(nextState) {
+  if (!nextState.botMode || nextState.phase !== "playing" || botTurnInFlight) return;
+  const current = nextState.players.find((player) => player.id === nextState.currentPlayerId);
+  if (!current?.isBot) return;
+  const key = [
+    nextState.code,
+    nextState.currentPlayerId,
+    nextState.topCard?.id || "none",
+    nextState.deckCount,
+    current.handCount,
+    nextState.pendingDraw,
+  ].join(":");
+  if (key === lastBotTurnKey) return;
+  lastBotTurnKey = key;
+  botTurnInFlight = true;
+  setTimeout(async () => {
+    try {
+      await sendAction("botTurn");
+    } finally {
+      botTurnInFlight = false;
+    }
+  }, nextState.botDifficulty === "hard" ? 650 : 900);
 }
 
 function openCardPicker() {

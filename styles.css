@@ -109,6 +109,16 @@ label,
   grid-column: 1;
 }
 
+#roomScreen.bot-room {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#roomScreen.bot-room > .table,
+#roomScreen.bot-room > .hand-wrap,
+#roomScreen.bot-room > .rules {
+  grid-column: 1;
+}
+
 .hidden {
   display: none;
 }
@@ -196,6 +206,18 @@ button:disabled {
 .panel button {
   width: 100%;
   margin-top: 16px;
+}
+
+.bot-create {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.bot-create button {
+  margin-top: 0;
 }
 
 .secondary {

@@ -89,6 +89,8 @@ async function handleApi(req, res) {
       pendingDrawRank: null,
       freePlayPlayerId: null,
       winnerId: null,
+      botMode: false,
+      botDifficulty: null,
       notice: null,
       mustDrawPlayerId: null,
       mustDrawSince: null,
@@ -98,6 +100,43 @@ async function handleApi(req, res) {
       eventId: 0,
       createdAt: Date.now(),
     });
+    sendJson(res, 200, { code });
+    return;
+  }
+
+  if (req.url === "/api/create-bot") {
+    const code = makeCode();
+    const difficulty = cleanBotDifficulty(body.difficulty);
+    const player = makePlayer(body.sessionId, body.name, true);
+    const bot = makePlayer(`bot-${code}`, botName(difficulty), false, true);
+    const room = {
+      code,
+      maxPlayers: 2,
+      hostId: player.id,
+      players: [player, bot],
+      phase: "waiting",
+      deck: [],
+      discard: [],
+      current: 0,
+      direction: 1,
+      chosenSuit: null,
+      pendingDraw: 0,
+      pendingDrawRank: null,
+      freePlayPlayerId: null,
+      winnerId: null,
+      botMode: true,
+      botDifficulty: difficulty,
+      notice: null,
+      mustDrawPlayerId: null,
+      mustDrawSince: null,
+      resolvingForcedDraw: false,
+      chat: [],
+      lastEvent: null,
+      eventId: 0,
+      createdAt: Date.now(),
+    };
+    rooms.set(code, room);
+    startGame(room);
     sendJson(res, 200, { code });
     return;
   }
@@ -161,7 +200,13 @@ function handleAction(room, player, body) {
   }
 
   if (body.type === "chat") {
+    if (room.botMode) throw new PublicError("Chat staat uit tegen de bot.");
     addChatMessage(room, player, body.text);
+    return;
+  }
+
+  if (body.type === "botTurn") {
+    playBotTurn(room);
     return;
   }
 
@@ -204,6 +249,72 @@ function handleAction(room, player, body) {
   }
 
   throw new PublicError("Onbekende actie.");
+}
+
+function playBotTurn(room) {
+  if (!room.botMode) throw new PublicError("Deze kamer heeft geen bot.");
+  if (room.phase !== "playing") return;
+  const bot = room.players[room.current];
+  if (!bot?.isBot) return;
+
+  updateMustDraw(room);
+  const playable = bot.hand.filter((card) => isPlayable(room, card, bot));
+  if (playable.length === 0) {
+    drawForTurn(room, bot, false);
+    return;
+  }
+
+  const card = chooseBotCard(room, bot, playable);
+  const cardIndex = bot.hand.findIndex((item) => item.id === card.id);
+  if (cardIndex < 0) return;
+  bot.hand.splice(cardIndex, 1);
+  room.discard.push(card);
+  room.chosenSuit = card.rank === "J" ? chooseBotSuit(bot, room.botDifficulty) : null;
+  if (room.freePlayPlayerId === bot.id) room.freePlayPlayerId = null;
+  applyCardEffect(room, card);
+
+  if (bot.hand.length === 0) {
+    room.phase = "finished";
+    room.winnerId = bot.id;
+    return;
+  }
+
+  if (!goAgainRanks.has(card.rank)) advanceTurn(room);
+  updateMustDraw(room);
+}
+
+function chooseBotCard(room, bot, playable) {
+  if (room.botDifficulty === "easy") return playable[Math.floor(Math.random() * playable.length)];
+
+  const scored = playable.map((card) => ({ card, score: botCardScore(card, bot, room) }));
+  scored.sort((a, b) => b.score - a.score);
+  if (room.botDifficulty === "medium" && Math.random() < 0.25) {
+    return scored[Math.floor(Math.random() * scored.length)].card;
+  }
+  return scored[0].card;
+}
+
+function botCardScore(card, bot, room) {
+  let score = 0;
+  if (bot.hand.length === 1) score += 100;
+  if (card.rank === "2") score += 22;
+  if (card.rank === "Joker") score += 34;
+  if (card.rank === "7" || card.rank === "K") score += 18;
+  if (card.rank === "8") score += room.players.length === 2 ? 16 : 10;
+  if (card.rank === "A") score += 10;
+  if (card.rank === "10") score += bot.hand.length > room.players[nextIndex(room, room.current)].hand.length ? 20 : -8;
+  if (card.rank === "J") score += 8;
+  score += ranks.indexOf(card.rank) / 10;
+  return score;
+}
+
+function chooseBotSuit(bot, difficulty) {
+  if (difficulty === "easy") return suits[Math.floor(Math.random() * suits.length)];
+  const counts = Object.fromEntries(suits.map((suit) => [suit, 0]));
+  for (const card of bot.hand) {
+    if (suits.includes(card.suit)) counts[card.suit] += 1;
+  }
+  return [...suits].sort((a, b) => counts[b] - counts[a])[0];
 }
 
 function startGame(room) {
@@ -358,6 +469,8 @@ function publicState(room, sessionId) {
     localOrigin: getPreferredLocalOrigin(),
     maxPlayers: room.maxPlayers,
     phase: room.phase,
+    botMode: Boolean(room.botMode),
+    botDifficulty: room.botDifficulty,
     isHost: room.hostId === sessionId,
     canUseHostTools: canUseHostTools(room, me),
     currentPlayerId: room.players[room.current]?.id || null,
@@ -372,7 +485,7 @@ function publicState(room, sessionId) {
     nextPlayerName: nextPlayer?.name || null,
     notice,
     lastEvent: room.lastEvent,
-    chat: room.chat.slice(-80),
+    chat: room.botMode ? [] : room.chat.slice(-80),
     viewerSwapFrom,
     winner: room.winnerId ? room.players.find((player) => player.id === room.winnerId) : null,
     availableCards: canUseHostTools(room, me) ? [...room.deck].sort(sortCards) : [],
@@ -381,7 +494,8 @@ function publicState(room, sessionId) {
       name: player.name,
       handCount: player.hand.length,
       isYou: player.id === sessionId,
-      connected: now - player.connectedAt < disconnectedAfterMs,
+      isBot: Boolean(player.isBot),
+      connected: player.isBot || now - player.connectedAt < disconnectedAfterMs,
     })),
     hand,
     playableCardIds: hand.filter((card) => room.phase === "playing" && room.players[room.current]?.id === sessionId && isPlayable(room, card, me)).map((card) => card.id),
@@ -429,6 +543,7 @@ function escapeRegex(value) {
 }
 
 function checkDisconnectWinner(room) {
+  if (room.botMode) return;
   if (room.phase !== "playing" || room.players.length < 2) return;
   const now = Date.now();
   const connectedPlayers = room.players.filter((player) => now - player.connectedAt < disconnectedAfterMs);
@@ -493,12 +608,13 @@ function validateCards(room) {
   if (seen.size > 54) throw new PublicError("Kaartfout: te veel kaarten in het spel.");
 }
 
-function makePlayer(sessionId, name, host) {
+function makePlayer(sessionId, name, host, isBot = false) {
   return {
     id: sessionId || cryptoId(),
     name: cleanName(name || (host ? "Host" : "Speler")),
     hand: [],
     connectedAt: Date.now(),
+    isBot,
   };
 }
 
@@ -529,6 +645,16 @@ function cleanCode(code) {
 
 function cleanName(name) {
   return String(name || "Speler").trim().slice(0, 18) || "Speler";
+}
+
+function cleanBotDifficulty(difficulty) {
+  return ["easy", "medium", "hard"].includes(difficulty) ? difficulty : "medium";
+}
+
+function botName(difficulty) {
+  if (difficulty === "easy") return "Bot Makkelijk";
+  if (difficulty === "hard") return "Bot Moeilijk";
+  return "Bot Gemiddeld";
 }
 
 function sortCards(a, b) {
