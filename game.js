@@ -560,7 +560,7 @@ function setRoomUrl(code, playerId = getPlayerFromUrl()) {
 }
 
 function getRoomFromUrl() {
-  const pathRoom = location.pathname.match(/^\/kamers\/([^/]+)\/?$/i)?.[1];
+  const pathRoom = location.pathname.match(/^\/kamers\/([^/]+)(?:\/join)?\/?$/i)?.[1];
   return (pathRoom || new URLSearchParams(location.search).get("room") || "").trim().toUpperCase();
 }
 
@@ -570,7 +570,9 @@ function getPlayerFromUrl() {
 
 function roomLink() {
   const origin = shareOrigin();
-  return `${origin}/kamers/${encodeURIComponent(room)}/`;
+  const url = new URL("/", origin);
+  url.searchParams.set("room", room);
+  return url.href;
 }
 
 function shareOrigin() {

@@ -481,7 +481,7 @@ function cryptoId() {
 
 function serveFile(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const requested = url.pathname === "/" || /^\/kamers\/[A-Z0-9]+\/?$/i.test(url.pathname)
+  const requested = url.pathname === "/" || /^\/kamers\/[A-Z0-9]+(?:\/join)?\/?$/i.test(url.pathname)
     ? "/index.html"
     : url.pathname;
   const filePath = path.normalize(path.join(ROOT, requested));
