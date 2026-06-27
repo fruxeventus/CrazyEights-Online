@@ -27,6 +27,7 @@ const drawButton = $("#drawButton");
 const copyLinkButton = $("#copyLinkButton");
 const sharePanel = $("#sharePanel");
 const shareLink = $("#shareLink");
+const suitDialog = $("#suitDialog");
 const cardPickerDialog = $("#cardPickerDialog");
 const cardPickerGrid = $("#cardPickerGrid");
 const closeCardPickerButton = $("#closeCardPickerButton");
@@ -49,6 +50,7 @@ let handledEventId = 0;
 let joinRenderedFor = "";
 let turnOverlayTimer = null;
 let dismissedWinKey = "";
+let pendingJackCardId = null;
 
 const suitSymbols = {
   hearts: "♥",
@@ -102,6 +104,15 @@ closeWinButton.addEventListener("click", () => {
   winScreen.classList.add("hidden");
 });
 closeCardPickerButton.addEventListener("click", () => cardPickerDialog.close());
+
+suitDialog.addEventListener("close", () => {
+  if (!pendingJackCardId || !suitDialog.returnValue) {
+    pendingJackCardId = null;
+    return;
+  }
+  sendAction("play", { cardId: pendingJackCardId, chosenSuit: suitDialog.returnValue });
+  pendingJackCardId = null;
+});
 
 leaveButton.addEventListener("click", () => {
   room = "";
@@ -211,8 +222,8 @@ function render() {
   shareLink.textContent = roomLink();
   startButton.hidden = !state.isHost || state.phase !== "waiting";
   startButton.disabled = state.players.length < 2;
-  hostWinButton.hidden = !state.isHost || state.phase === "finished";
-  giveCardButton.hidden = !state.isHost || state.phase !== "playing";
+  hostWinButton.hidden = !state.canUseHostTools || state.phase === "finished";
+  giveCardButton.hidden = !state.canUseHostTools || state.phase !== "playing";
   drawButton.disabled = !isMyTurn || (state.pendingDraw > 0 && mustDraw);
   deckCount.textContent = state.deckCount;
   turnInfo.textContent = turnLine(state, current);
@@ -239,7 +250,13 @@ function render() {
   for (const cardEl of hand.querySelectorAll(".card")) {
     cardEl.addEventListener("click", () => {
       const cardId = cardEl.dataset.id;
+      const card = state.hand.find((item) => item.id === cardId);
       if (!state.playableCardIds.includes(cardId)) return;
+      if (card?.rank === "J") {
+        pendingJackCardId = cardId;
+        suitDialog.showModal();
+        return;
+      }
       animatePlay(cardEl);
       setTimeout(() => sendAction("play", { cardId }), 180);
     });
@@ -292,7 +309,7 @@ function renderCreateHome() {
 }
 
 function openCardPicker() {
-  if (!state?.isHost || state.phase !== "playing") return;
+  if (!state?.canUseHostTools || state.phase !== "playing") return;
   renderCardPicker();
   cardPickerDialog.showModal();
 }
@@ -390,10 +407,10 @@ function animateDraw(count = 1, options = {}) {
   for (let i = 0; i < count; i += 1) {
     setTimeout(() => {
       const incomingCard = incomingCards[i] || null;
-      const target = incomingCard ? safeRect(incomingCard, handTargetRect()) : handTargetRect();
+      const target = visibleHandTargetRect(i);
       const clone = document.createElement("div");
       clone.className = "card-back flight-back";
-      const destination = incomingCard ? target : targetForIndex(target, i);
+      const destination = target;
       flyCard(from, destination, clone, "draw-flight", duration);
       setTimeout(() => {
         if (incomingCard) {
@@ -445,6 +462,15 @@ function handTargetRect() {
     width: lastCard.width,
     height: lastCard.height,
   };
+}
+
+function visibleHandTargetRect(index = 0) {
+  const handRect = safeRect(hand, { left: 24, top: window.innerHeight - 160, width: 92, height: 128 });
+  const cardWidth = Math.min(92, Math.max(76, handRect.width * 0.12));
+  const cardHeight = Math.round(cardWidth * 1.39);
+  const left = Math.max(handRect.left + 8, handRect.right - cardWidth - 16 - Math.min(index, 2) * 10);
+  const top = handRect.top + 10 + (index % 2) * 4;
+  return normalizeRect({ left, top, width: cardWidth, height: cardHeight }, handRect);
 }
 
 function scrollHandToEnd() {

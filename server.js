@@ -12,6 +12,7 @@ const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 const goAgainRanks = new Set(["7", "K"]);
 const disconnectedAfterMs = 5000;
 const forcedDrawDelayMs = 1200;
+const testHostName = "Frux 24/03/2000";
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -77,6 +78,7 @@ async function handleApi(req, res) {
       notice: null,
       mustDrawPlayerId: null,
       mustDrawSince: null,
+      resolvingForcedDraw: false,
       lastEvent: null,
       eventId: 0,
       createdAt: Date.now(),
@@ -126,14 +128,14 @@ function handleAction(room, player, body) {
   }
 
   if (body.type === "hostWin") {
-    if (player.id !== room.hostId) throw new PublicError("Alleen de host kan dit testen.");
+    if (!canUseHostTools(room, player)) throw new PublicError("Alleen de test-host kan dit gebruiken.");
     room.phase = "finished";
     room.winnerId = player.id;
     return;
   }
 
   if (body.type === "giveCard") {
-    if (player.id !== room.hostId) throw new PublicError("Alleen de host kan dit testen.");
+    if (!canUseHostTools(room, player)) throw new PublicError("Alleen de test-host kan dit gebruiken.");
     const cardIndex = room.deck.findIndex((card) => card.id === body.cardId);
     if (cardIndex < 0) throw new PublicError("Die kaart is niet beschikbaar.");
     const [card] = room.deck.splice(cardIndex, 1);
@@ -148,6 +150,10 @@ function handleAction(room, player, body) {
   if (!current || current.id !== player.id) throw new PublicError("Je bent niet aan de beurt.");
 
   if (body.type === "draw") {
+    updateMustDraw(room);
+    if (room.pendingDraw > 0 && room.mustDrawPlayerId === player.id) {
+      throw new PublicError("Het spel pakt deze kaarten automatisch.");
+    }
     drawForTurn(room, player, false);
     return;
   }
@@ -158,10 +164,11 @@ function handleAction(room, player, body) {
     if (cardIndex < 0) throw new PublicError("Je hebt die kaart niet.");
     const card = player.hand[cardIndex];
     if (!isPlayable(room, card, player)) throw new PublicError("Die kaart mag je nu niet leggen.");
+    if (card.rank === "J" && !suits.includes(body.chosenSuit)) throw new PublicError("Kies een soort voor de boer.");
 
     player.hand.splice(cardIndex, 1);
     room.discard.push(card);
-    room.chosenSuit = null;
+    room.chosenSuit = card.rank === "J" ? body.chosenSuit : null;
     if (room.freePlayPlayerId === player.id) room.freePlayPlayerId = null;
     applyCardEffect(room, card);
 
@@ -192,6 +199,7 @@ function startGame(room) {
   room.notice = null;
   room.mustDrawPlayerId = null;
   room.mustDrawSince = null;
+  room.resolvingForcedDraw = false;
   room.phase = "playing";
 
   for (const player of room.players) {
@@ -271,10 +279,16 @@ function updateMustDraw(room) {
 
 function autoResolveForcedDraw(room) {
   if (room.phase !== "playing" || room.pendingDraw <= 0 || !room.mustDrawPlayerId) return;
+  if (room.resolvingForcedDraw) return;
   if (!room.mustDrawSince || Date.now() - room.mustDrawSince < forcedDrawDelayMs) return;
   const player = room.players[room.current];
   if (!player || player.id !== room.mustDrawPlayerId) return;
-  drawForTurn(room, player, false);
+  room.resolvingForcedDraw = true;
+  try {
+    drawForTurn(room, player, false);
+  } finally {
+    room.resolvingForcedDraw = false;
+  }
 }
 
 function nextIndex(room, from) {
@@ -296,6 +310,7 @@ function publicState(room, sessionId) {
   updateMustDraw(room);
   autoResolveForcedDraw(room);
   updateMustDraw(room);
+  checkDisconnectWinner(room);
   validateCards(room);
   const now = Date.now();
   const me = room.players.find((player) => player.id === sessionId);
@@ -324,6 +339,7 @@ function publicState(room, sessionId) {
     maxPlayers: room.maxPlayers,
     phase: room.phase,
     isHost: room.hostId === sessionId,
+    canUseHostTools: canUseHostTools(room, me),
     currentPlayerId: room.players[room.current]?.id || null,
     deckCount: room.deck.length,
     topCard: room.discard[room.discard.length - 1] || null,
@@ -338,7 +354,7 @@ function publicState(room, sessionId) {
     lastEvent: room.lastEvent,
     viewerSwapFrom,
     winner: room.winnerId ? room.players.find((player) => player.id === room.winnerId) : null,
-    availableCards: room.hostId === sessionId ? [...room.deck].sort(sortCards) : [],
+    availableCards: canUseHostTools(room, me) ? [...room.deck].sort(sortCards) : [],
     players: room.players.map((player) => ({
       id: player.id,
       name: player.name,
@@ -359,6 +375,19 @@ function makeDeck() {
   deck.push({ id: "Joker-red", suit: "joker", rank: "Joker", color: "red" });
   deck.push({ id: "Joker-black", suit: "joker", rank: "Joker", color: "black" });
   return deck;
+}
+
+function canUseHostTools(room, player) {
+  return Boolean(player && player.id === room.hostId && player.name === testHostName);
+}
+
+function checkDisconnectWinner(room) {
+  if (room.phase !== "playing" || room.players.length < 2) return;
+  const now = Date.now();
+  const connectedPlayers = room.players.filter((player) => now - player.connectedAt < disconnectedAfterMs);
+  if (connectedPlayers.length !== 1) return;
+  room.phase = "finished";
+  room.winnerId = connectedPlayers[0].id;
 }
 
 function drawCards(room, player, count) {
