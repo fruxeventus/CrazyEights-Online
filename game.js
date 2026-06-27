@@ -5,9 +5,11 @@ const roomScreen = $("#roomScreen");
 const heroTitle = $(".hero h2");
 const heroCopy = $(".hero p");
 const createForm = $("#createForm");
+const codeJoinForm = $("#codeJoinForm");
 const joinForm = $("#joinForm");
 const createName = $("#createName");
 const joinName = $("#joinName");
+const roomCodeInput = $("#roomCodeInput");
 const playerCount = $("#playerCount");
 const connection = $("#connection");
 const roomCodeLabel = $("#roomCodeLabel");
@@ -36,6 +38,9 @@ const winnerTitle = $("#winnerTitle");
 const winnerText = $("#winnerText");
 const closeWinButton = $("#closeWinButton");
 const turnOverlay = $("#turnOverlay");
+const chatMessages = $("#chatMessages");
+const chatForm = $("#chatForm");
+const chatInput = $("#chatInput");
 
 let sessionId = localStorage.getItem("pesten-session") || crypto.randomUUID();
 localStorage.setItem("pesten-session", sessionId);
@@ -85,6 +90,28 @@ createForm.addEventListener("submit", async (event) => {
   enterRoom(result.code);
 });
 
+codeJoinForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const name = cleanName(createName.value);
+  const code = cleanRoomCode(roomCodeInput.value);
+  if (!code) return;
+  localStorage.setItem("pesten-name", name);
+  sessionId = crypto.randomUUID();
+  setRoomUrl(code, sessionId);
+  try {
+    await api("/api/join", { name, code, sessionId });
+    enterRoom(code);
+  } catch (error) {
+    codeJoinForm.querySelector(".panel-copy").textContent = error.message;
+    room = "";
+    history.pushState({}, "", "/");
+  }
+});
+
+roomCodeInput.addEventListener("input", () => {
+  roomCodeInput.value = cleanRoomCode(roomCodeInput.value);
+});
+
 joinForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = cleanName(joinName.value);
@@ -104,6 +131,14 @@ closeWinButton.addEventListener("click", () => {
   winScreen.classList.add("hidden");
 });
 closeCardPickerButton.addEventListener("click", () => cardPickerDialog.close());
+
+chatForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatInput.value = "";
+  await sendAction("chat", { text });
+});
 
 suitDialog.addEventListener("close", () => {
   if (!pendingJackCardId || !suitDialog.returnValue) {
@@ -206,6 +241,7 @@ function render() {
   roomScreen.classList.toggle("hidden", !inRoom);
   joinForm.classList.add("hidden");
   createForm.classList.remove("hidden");
+  codeJoinForm.classList.remove("hidden");
   if (!inRoom && !room) renderCreateHome();
   if (!inRoom) return;
 
@@ -282,6 +318,7 @@ function render() {
   }
 
   if (state.notice) message.textContent = state.notice.text;
+  renderChat(state);
   renderWinScreen(state);
   animateStateChanges(lastRenderedState, state);
   lastRenderedState = snapshotState(state);
@@ -293,6 +330,7 @@ function renderJoin(errorText = "") {
   heroTitle.textContent = "Meedoen met een kamer";
   heroCopy.textContent = "Vul je naam in om met deze kamer mee te doen. De host start het spel zodra iedereen binnen is.";
   createForm.classList.add("hidden");
+  codeJoinForm.classList.add("hidden");
   joinForm.classList.remove("hidden");
   if (joinRenderedFor !== room) {
     joinName.value = "";
@@ -306,6 +344,27 @@ function renderJoin(errorText = "") {
 function renderCreateHome() {
   heroTitle.textContent = "Maak een kamer en deel de link";
   heroCopy.textContent = "Kies hoeveel spelers mee mogen doen, maak een kamer en stuur de link naar je vrienden. Zij vullen alleen hun naam in.";
+  createForm.classList.remove("hidden");
+  codeJoinForm.classList.remove("hidden");
+}
+
+function renderChat(nextState) {
+  const messages = nextState.chat || [];
+  const wasNearBottom = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 24;
+  chatMessages.innerHTML = messages
+    .map((item) => `<article class="chat-message">
+      <strong style="color: ${playerColor(item.playerId)}">${escapeHtml(item.name)}</strong>
+      <span>${escapeHtml(item.text)}</span>
+    </article>`)
+    .join("");
+  if (wasNearBottom) chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function playerColor(playerId) {
+  const colors = ["#4ade80", "#60a5fa", "#f7c948", "#fb7185", "#c084fc", "#2dd4bf"];
+  let hash = 0;
+  for (const char of String(playerId || "")) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return colors[hash % colors.length];
 }
 
 function openCardPicker() {
@@ -615,6 +674,10 @@ function phaseLabel(phase) {
 
 function cleanName(value) {
   return value.trim().slice(0, 18) || "Speler";
+}
+
+function cleanRoomCode(value) {
+  return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
 }
 
 function escapeHtml(value) {

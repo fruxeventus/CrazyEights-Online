@@ -22,9 +22,9 @@
           <p>Kies hoeveel spelers mee mogen doen, maak een kamer en stuur de link naar je vrienden. Zij vullen alleen hun naam in.</p>
         </div>
 
-        <div class="home-grid single">
+        <div class="home-grid">
           <form class="panel" id="createForm">
-            <h3>Kamer maken</h3>
+            <h3>Spelen</h3>
             <label>
               Jouw naam
               <input id="createName" maxlength="18" autocomplete="nickname" placeholder="Speler" />
@@ -39,6 +39,16 @@
               </select>
             </label>
             <button type="submit">Maak kamer</button>
+          </form>
+
+          <form class="panel" id="codeJoinForm">
+            <h3>Meedoen met code</h3>
+            <p class="panel-copy">Gebruik de naam hierboven en typ de kamercode van je vriend.</p>
+            <label>
+              Kamercode
+              <input id="roomCodeInput" maxlength="4" autocomplete="off" placeholder="ABCD" />
+            </label>
+            <button type="submit">Doe mee met code</button>
           </form>
 
           <form class="panel hidden" id="joinForm">
@@ -107,6 +117,20 @@
           <summary>Regels in deze versie</summary>
           <p>Leg dezelfde soort of waarde op. Boer telt als gewone kaart. Aas draait de richting om. 2 laat de volgende speler twee kaarten pakken en kan stapelen. Jokers stapelen per vijf kaarten. 7 en Heer geven nog een beurt. 8 slaat de volgende speler over. 10 wisselt alle handen door.</p>
         </details>
+
+        <aside class="chat-panel" id="chatPanel">
+          <div class="chat-head">
+            <div>
+              <span class="eyebrow">Chat</span>
+              <strong>Berichten</strong>
+            </div>
+          </div>
+          <div class="chat-messages" id="chatMessages"></div>
+          <form class="chat-form" id="chatForm">
+            <input id="chatInput" maxlength="160" autocomplete="off" placeholder="Typ een bericht" />
+            <button type="submit">Stuur</button>
+          </form>
+        </aside>
       </section>
     </main>
 

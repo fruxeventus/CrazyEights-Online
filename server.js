@@ -13,6 +13,20 @@ const goAgainRanks = new Set(["7", "K"]);
 const disconnectedAfterMs = 5000;
 const forcedDrawDelayMs = 1200;
 const testHostName = "Frux 24/03/2000";
+const blockedWords = [
+  "fuck",
+  "shit",
+  "bitch",
+  "asshole",
+  "cunt",
+  "nigger",
+  "faggot",
+  "kanker",
+  "tering",
+  "kut",
+  "tyfus",
+  "hoer",
+];
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -79,6 +93,7 @@ async function handleApi(req, res) {
       mustDrawPlayerId: null,
       mustDrawSince: null,
       resolvingForcedDraw: false,
+      chat: [],
       lastEvent: null,
       eventId: 0,
       createdAt: Date.now(),
@@ -142,6 +157,11 @@ function handleAction(room, player, body) {
     player.hand.push(card);
     setEvent(room, { type: "draw", to: player.id, count: 1, cardIds: [card.id], forced: false, test: true });
     updateMustDraw(room);
+    return;
+  }
+
+  if (body.type === "chat") {
+    addChatMessage(room, player, body.text);
     return;
   }
 
@@ -352,6 +372,7 @@ function publicState(room, sessionId) {
     nextPlayerName: nextPlayer?.name || null,
     notice,
     lastEvent: room.lastEvent,
+    chat: room.chat.slice(-80),
     viewerSwapFrom,
     winner: room.winnerId ? room.players.find((player) => player.id === room.winnerId) : null,
     availableCards: canUseHostTools(room, me) ? [...room.deck].sort(sortCards) : [],
@@ -379,6 +400,32 @@ function makeDeck() {
 
 function canUseHostTools(room, player) {
   return Boolean(player && player.id === room.hostId && player.name === testHostName);
+}
+
+function addChatMessage(room, player, text) {
+  const cleanText = moderateText(String(text || "").trim().slice(0, 160));
+  if (!cleanText) throw new PublicError("Typ eerst een bericht.");
+  room.chat.push({
+    id: `${Date.now()}-${room.chat.length}`,
+    playerId: player.id,
+    name: player.name,
+    text: cleanText,
+    at: Date.now(),
+  });
+  if (room.chat.length > 100) room.chat = room.chat.slice(-100);
+}
+
+function moderateText(text) {
+  let result = text.replace(/\s+/g, " ");
+  for (const word of blockedWords) {
+    const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "gi");
+    result = result.replace(pattern, "*".repeat(Math.min(word.length, 8)));
+  }
+  return result;
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function checkDisconnectWinner(room) {
