@@ -244,7 +244,6 @@ async function handleApi(req, res) {
       setupTutorialGame(room);
       room.phase = "tutorial";
     } else {
-      room.tutorialMode = false;
       startGame(room);
     }
     rooms.set(code, room);
@@ -1353,7 +1352,9 @@ function cryptoId() {
 
 function serveFile(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const requested = url.pathname === "/" || /^\/kamers\/[A-Z0-9]+(?:\/join)?\/?$/i.test(url.pathname)
+  const requested = url.pathname === "/" ||
+    /^\/kamers\/[A-Z0-9]+(?:\/join)?\/?$/i.test(url.pathname) ||
+    /^\/games\/(?:poker|crazy-eights|blackjack)\/?$/i.test(url.pathname)
     ? "/index.html"
     : url.pathname;
   const filePath = path.normalize(path.join(ROOT, requested));

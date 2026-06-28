@@ -89,7 +89,7 @@ let lastBotTurnKey = "";
 let language = localStorage.getItem("crazy-eights-language") || "en";
 let tutorialStep = 0;
 let tutorialBotFirstTurnPending = false;
-let selectedGameType = "";
+let selectedGameType = getGameTypeFromUrl();
 
 const translations = {
   en: {
@@ -632,12 +632,14 @@ for (const button of document.querySelectorAll("[data-game-choice]")) {
   button.addEventListener("click", () => {
     selectedGameType = button.dataset.gameChoice;
     gameTypeSelect.value = selectedGameType;
+    history.pushState({}, "", `/games/${selectedGameType}/`);
     showGameSetup();
   });
 }
 
 backToGamesButton.addEventListener("click", () => {
   selectedGameType = "";
+  history.pushState({}, "", "/");
   showGamePicker();
 });
 
@@ -718,7 +720,7 @@ codeJoinForm.addEventListener("submit", async (event) => {
   } catch (error) {
     codeJoinForm.querySelector(".panel-copy").textContent = error.message;
     room = "";
-    history.pushState({}, "", "/");
+    history.pushState({}, "", selectedGameType ? `/games/${selectedGameType}/` : "/");
   }
 });
 
@@ -788,6 +790,8 @@ copyLinkButton.addEventListener("click", async () => {
 
 window.addEventListener("popstate", () => {
   room = getRoomFromUrl();
+  selectedGameType = getGameTypeFromUrl();
+  if (selectedGameType) gameTypeSelect.value = selectedGameType;
   state = null;
   poll();
 });
@@ -968,6 +972,8 @@ function setLabelText(control, text) {
 }
 
 function render() {
+  selectedGameType = room ? selectedGameType : getGameTypeFromUrl();
+  if (selectedGameType) gameTypeSelect.value = selectedGameType;
   const inRoom = Boolean(room && state);
   homeScreen.classList.toggle("hidden", inRoom);
   roomScreen.classList.toggle("hidden", !inRoom);
@@ -1223,7 +1229,7 @@ function renderTutorial(nextState) {
 
   const me = nextState.players.find((player) => player.isYou);
   const isMyTurn = me && nextState.currentPlayerId === me.id && nextState.phase === "playing";
-  tutorialTitle.textContent = t("tutorialTitle");
+  tutorialTitle.textContent = `${gameLabel(nextState.gameType)} ${t("tutorialEyebrow")}`;
   tutorialNextButton.hidden = nextState.phase !== "tutorial";
 
   if (nextState.phase === "tutorial") {
@@ -1231,6 +1237,22 @@ function renderTutorial(nextState) {
     tutorialText.textContent = t(step.key);
     tutorialNextButton.textContent = tutorialStep >= tutorialTourSteps.length - 1 ? t("tourStartGame") : t("tourNext");
     roomScreen.classList.add("tutorial-tour", `tutorial-point-${step.point}`);
+    return;
+  }
+
+  if (nextState.gameType === "blackjack") {
+    tutorialText.textContent = nextState.currentPlayerId === me?.id
+      ? t("blackjackTurn")
+      : t("tutorialBotTurn");
+    roomScreen.classList.add(nextState.currentPlayerId === me?.id ? "tutorial-point-deck" : "tutorial-point-bot");
+    return;
+  }
+
+  if (nextState.gameType === "poker") {
+    tutorialText.textContent = nextState.currentPlayerId === me?.id
+      ? t("pokerTurn")
+      : t("tutorialBotTurn");
+    roomScreen.classList.add(nextState.currentPlayerId === me?.id ? "tutorial-point-deck" : "tutorial-point-bot");
     return;
   }
 
@@ -1670,6 +1692,11 @@ function setRoomUrl(code, playerId = getPlayerFromUrl()) {
 function getRoomFromUrl() {
   const pathRoom = location.pathname.match(/^\/kamers\/([^/]+)(?:\/join)?\/?$/i)?.[1];
   return (pathRoom || new URLSearchParams(location.search).get("room") || "").trim().toUpperCase();
+}
+
+function getGameTypeFromUrl() {
+  const game = location.pathname.match(/^\/games\/(poker|crazy-eights|blackjack)\/?$/i)?.[1] || "";
+  return game.toLowerCase();
 }
 
 function getPlayerFromUrl() {
