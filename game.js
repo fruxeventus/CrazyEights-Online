@@ -8,6 +8,11 @@ const languageSelect = $("#languageSelect");
 const languageLabel = $("#languageLabel");
 const heroTitle = $(".hero h2");
 const heroCopy = $(".hero p");
+const gamePicker = $("#gamePicker");
+const setupScreen = $("#setupScreen");
+const selectedGameTitle = $("#selectedGameTitle");
+const selectedGameEyebrow = $("#selectedGameEyebrow");
+const backToGamesButton = $("#backToGamesButton");
 const createForm = $("#createForm");
 const codeJoinForm = $("#codeJoinForm");
 const joinForm = $("#joinForm");
@@ -84,6 +89,7 @@ let lastBotTurnKey = "";
 let language = localStorage.getItem("crazy-eights-language") || "en";
 let tutorialStep = 0;
 let tutorialBotFirstTurnPending = false;
+let selectedGameType = "";
 
 const translations = {
   en: {
@@ -95,6 +101,10 @@ const translations = {
     connected: "Connected",
     homeTitle: "Pick a game and share the link",
     homeCopy: "Choose Poker, Crazy Eights, or Blackjack. Then create a room, play a bot, or start a tutorial bot.",
+    pickGameTitle: "Choose a card game",
+    pickGameCopy: "Pick a game first. Then you can create a room, join with a code, play a bot, or start a tutorial.",
+    selectedGame: "Selected game",
+    backToGames: "Back to games",
     play: "Play",
     game: "Game",
     crazyEights: "Crazy Eights",
@@ -613,8 +623,22 @@ languageSelect.addEventListener("change", () => {
 });
 
 gameTypeSelect.addEventListener("change", () => {
+  selectedGameType = gameTypeSelect.value;
   updateHomeRules();
   renderCreateHome();
+});
+
+for (const button of document.querySelectorAll("[data-game-choice]")) {
+  button.addEventListener("click", () => {
+    selectedGameType = button.dataset.gameChoice;
+    gameTypeSelect.value = selectedGameType;
+    showGameSetup();
+  });
+}
+
+backToGamesButton.addEventListener("click", () => {
+  selectedGameType = "";
+  showGamePicker();
 });
 
 createName.value = localStorage.getItem("pesten-name") || "";
@@ -744,6 +768,7 @@ suitDialog.addEventListener("close", () => {
 leaveButton.addEventListener("click", () => {
   room = "";
   state = null;
+  selectedGameType = "";
   history.pushState({}, "", "/");
   render();
 });
@@ -853,6 +878,10 @@ function applyLanguage() {
   gameTypeSelect.options[0].textContent = t("crazyEights");
   gameTypeSelect.options[1].textContent = t("poker");
   gameTypeSelect.options[2].textContent = t("blackjack");
+  $("#crazyChoiceTitle").textContent = t("crazyEights");
+  $("#pokerChoiceTitle").textContent = t("poker");
+  $("#blackjackChoiceTitle").textContent = t("blackjack");
+  for (const button of document.querySelectorAll("[data-game-choice]")) button.textContent = t("play");
   setLabelText(playerCount, t("maxPlayers"));
   [...playerCount.options].forEach((option) => {
     option.textContent = `${option.value} ${t("players")}`;
@@ -925,6 +954,12 @@ function rulesTextForGame(gameType) {
   return t("rulesText");
 }
 
+function gameLabel(gameType) {
+  if (gameType === "poker") return t("poker");
+  if (gameType === "blackjack") return t("blackjack");
+  return t("crazyEights");
+}
+
 function setLabelText(control, text) {
   const label = control.closest("label");
   if (!label) return;
@@ -939,7 +974,10 @@ function render() {
   joinForm.classList.add("hidden");
   createForm.classList.remove("hidden");
   codeJoinForm.classList.remove("hidden");
-  if (!inRoom && !room) renderCreateHome();
+  if (!inRoom && !room) {
+    if (selectedGameType) showGameSetup();
+    else showGamePicker();
+  }
   if (!inRoom) return;
 
   const me = state.players.find((player) => player.isYou);
@@ -1063,6 +1101,8 @@ function renderJoin(errorText = "") {
   heroCopy.textContent = t("joinCopy");
   createForm.classList.add("hidden");
   codeJoinForm.classList.add("hidden");
+  gamePicker.classList.add("hidden");
+  setupScreen.classList.remove("hidden");
   tutorialHomePanel.classList.add("hidden");
   joinForm.classList.remove("hidden");
   if (joinRenderedFor !== room) {
@@ -1075,11 +1115,30 @@ function renderJoin(errorText = "") {
 }
 
 function renderCreateHome() {
-  heroTitle.textContent = t("homeTitle");
-  heroCopy.textContent = t("homeCopy");
   createForm.classList.remove("hidden");
   codeJoinForm.classList.remove("hidden");
   tutorialHomePanel.classList.remove("hidden");
+}
+
+function showGamePicker() {
+  heroTitle.textContent = t("pickGameTitle");
+  heroCopy.textContent = t("pickGameCopy");
+  gamePicker.classList.remove("hidden");
+  setupScreen.classList.add("hidden");
+}
+
+function showGameSetup() {
+  if (!selectedGameType) selectedGameType = gameTypeSelect.value || "crazy-eights";
+  gameTypeSelect.value = selectedGameType;
+  heroTitle.textContent = t("homeTitle");
+  heroCopy.textContent = t("homeCopy");
+  selectedGameEyebrow.textContent = t("selectedGame");
+  selectedGameTitle.textContent = gameLabel(selectedGameType);
+  backToGamesButton.textContent = t("backToGames");
+  gamePicker.classList.add("hidden");
+  setupScreen.classList.remove("hidden");
+  updateHomeRules();
+  renderCreateHome();
 }
 
 function renderChat(nextState) {
