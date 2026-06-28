@@ -239,6 +239,7 @@ function handleAction(room, player, body) {
 
   if (body.type === "play") {
     if (room.mustDrawPlayerId === player.id) throw new PublicError("Je moet eerst een kaart pakken.");
+    if (!canPlayAnotherCard(room, player)) throw new PublicError("Maak eerst je beurt af.");
     const cardIndex = player.hand.findIndex((card) => card.id === body.cardId);
     if (cardIndex < 0) throw new PublicError("Je hebt die kaart niet.");
     const card = player.hand[cardIndex];
@@ -274,6 +275,10 @@ function playBotTurn(room) {
   if (!bot?.isBot) return;
 
   updateMustDraw(room);
+  if (!canPlayAnotherCard(room, bot)) {
+    finishTurn(room, bot);
+    return;
+  }
   const playable = bot.hand.filter((card) => isPlayable(room, card, bot));
   if (playable.length === 0) {
     const hadPendingDraw = room.pendingDraw > 0;
@@ -442,6 +447,15 @@ function undoLastPlay(room, player) {
   updateMustDraw(room);
 }
 
+function canPlayAnotherCard(room, player) {
+  if (!room.turnHistory?.some((entry) => entry.playerId === player.id)) return true;
+  if (room.freePlayPlayerId === player.id) return true;
+  const top = room.discard[room.discard.length - 1];
+  if (!top) return true;
+  if (goAgainRanks.has(top.rank)) return true;
+  return top.rank === "8" && room.players.length === 2;
+}
+
 function snapshotTurnState(room) {
   return {
     deck: cloneCards(room.deck),
@@ -558,6 +572,7 @@ function publicState(room, sessionId) {
     : null;
   const nextPlayer = room.phase === "playing" ? room.players[nextIndex(room, room.current)] : null;
   const isCurrentViewer = room.phase === "playing" && room.players[room.current]?.id === sessionId;
+  const canViewerPlayAnother = Boolean(isCurrentViewer && me && canPlayAnotherCard(room, me));
   const swapMapping = room.lastEvent?.type === "swap" ? room.lastEvent.mapping : room.lastEvent?.swapMapping;
   const viewerSwap = swapMapping
     ? swapMapping.find((item) => item.to === sessionId)
@@ -603,7 +618,7 @@ function publicState(room, sessionId) {
       connected: player.isBot || now - player.connectedAt < disconnectedAfterMs,
     })),
     hand,
-    playableCardIds: hand.filter((card) => room.phase === "playing" && room.players[room.current]?.id === sessionId && isPlayable(room, card, me)).map((card) => card.id),
+    playableCardIds: hand.filter((card) => canViewerPlayAnother && isPlayable(room, card, me)).map((card) => card.id),
   };
 }
 
