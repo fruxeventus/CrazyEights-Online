@@ -123,6 +123,10 @@ label,
   display: none;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .hero {
   padding: clamp(20px, 5vw, 38px) 4px 8px;
 }

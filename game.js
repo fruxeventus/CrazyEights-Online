@@ -57,6 +57,7 @@ let suppressNextDrawAnimation = false;
 let handledEventId = 0;
 let joinRenderedFor = "";
 let turnOverlayTimer = null;
+let pendingTurnOverlayTimer = null;
 let dismissedWinKey = "";
 let pendingJackCardId = null;
 let botTurnInFlight = false;
@@ -410,7 +411,11 @@ function scheduleBotTurn(nextState) {
     } finally {
       botTurnInFlight = false;
     }
-  }, nextState.botDifficulty === "hard" ? 650 : 900);
+  }, botThinkDelay());
+}
+
+function botThinkDelay() {
+  return 2000 + Math.floor(Math.random() * 6001);
 }
 
 function openCardPicker() {
@@ -452,7 +457,7 @@ function animateStateChanges(previous, next) {
 
   if (previous.phase !== "playing" && next.phase === "playing") {
     const current = next.players.find((player) => player.id === next.currentPlayerId);
-    if (current) showTurnOverlay(`${current.name} is aan de beurt`);
+    if (current) scheduleTurnOverlay(`${current.name} is aan de beurt`, 500);
   }
 
   if (previous.phase !== "playing" || next.phase !== "playing") return;
@@ -466,7 +471,7 @@ function animateStateChanges(previous, next) {
 
   if (previous.currentPlayerId !== next.currentPlayerId) {
     const current = next.players.find((player) => player.id === next.currentPlayerId);
-    if (current) showTurnOverlay(`${current.name} is aan de beurt`);
+    if (current) scheduleTurnOverlay(`${current.name} is aan de beurt`, turnOverlayDelay(next));
   }
 }
 
@@ -673,6 +678,7 @@ function showSwapSource(name) {
 }
 
 function showTurnOverlay(text) {
+  clearTimeout(pendingTurnOverlayTimer);
   clearTimeout(turnOverlayTimer);
   turnOverlay.textContent = text;
   turnOverlay.classList.remove("hidden", "turn-overlay-show");
@@ -682,6 +688,21 @@ function showTurnOverlay(text) {
     turnOverlay.classList.remove("turn-overlay-show");
     turnOverlay.classList.add("hidden");
   }, 1700);
+}
+
+function scheduleTurnOverlay(text, delay = 500) {
+  clearTimeout(pendingTurnOverlayTimer);
+  pendingTurnOverlayTimer = setTimeout(() => showTurnOverlay(text), Math.max(0, delay));
+}
+
+function turnOverlayDelay(nextState) {
+  const event = nextState.lastEvent;
+  const afterAnimations = 500;
+  if (!event) return afterAnimations;
+  if (event.type === "draw") return event.count * 680 + afterAnimations;
+  if (event.type === "swap") return Math.max(1, event.count || 1) * 85 + 500 + afterAnimations;
+  if (nextState.topCard) return 430 + afterAnimations;
+  return afterAnimations;
 }
 
 function setRoomUrl(code, playerId = getPlayerFromUrl()) {

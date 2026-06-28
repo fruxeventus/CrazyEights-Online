@@ -243,7 +243,7 @@ function handleAction(room, player, body) {
       return;
     }
 
-    if (!goAgainRanks.has(card.rank)) advanceTurn(room);
+    if (shouldAdvanceAfterPlay(room, card)) advanceTurn(room);
     updateMustDraw(room);
     return;
   }
@@ -279,8 +279,14 @@ function playBotTurn(room) {
     return;
   }
 
-  if (!goAgainRanks.has(card.rank)) advanceTurn(room);
+  if (shouldAdvanceAfterPlay(room, card)) advanceTurn(room);
   updateMustDraw(room);
+}
+
+function shouldAdvanceAfterPlay(room, card) {
+  if (goAgainRanks.has(card.rank)) return false;
+  if (card.rank === "A" && room.players.length === 2) return false;
+  return true;
 }
 
 function chooseBotCard(room, bot, playable) {
