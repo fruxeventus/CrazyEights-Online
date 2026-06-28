@@ -800,9 +800,7 @@ function render() {
       const offline = player.connected ? "" : " offline";
       const you = player.isYou ? t("youSuffix") : "";
       const presence = player.isBot ? t("bot") : player.connected ? t("connectedWord") : t("offline");
-      const visibleHand = player.hand
-        ? `<div class="visible-bot-hand">${player.hand.map((card) => cardHtml(card, "tiny")).join("")}</div>`
-        : "";
+      const visibleHand = renderPlayerHandPreview(player);
       return `<article class="player${active}${offline}" data-player-id="${escapeHtml(player.id)}">
         <strong>${escapeHtml(player.name)}${you}</strong>
         <span>${t("cardCount", { count: player.handCount })}</span>
@@ -906,6 +904,17 @@ function renderChat(nextState) {
     </article>`)
     .join("");
   if (wasNearBottom) chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function renderPlayerHandPreview(player) {
+  const cards = player.hand
+    ? player.hand.map((card) => cardHtml(card, "tiny"))
+    : Array.from({ length: player.handCount }, (_, index) => cardBackHtml(index));
+  return `<div class="visible-bot-hand">${cards.join("")}</div>`;
+}
+
+function cardBackHtml(index = 0) {
+  return `<span class="card-back tiny" style="--tilt: ${((index % 5) - 2) * 0.8}deg" aria-hidden="true"></span>`;
 }
 
 function noticeMessage(notice, me) {

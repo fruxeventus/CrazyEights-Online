@@ -482,6 +482,28 @@ button:disabled {
   padding-bottom: 2px;
 }
 
+.card-back.tiny {
+  position: relative;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 5px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 38%),
+    repeating-linear-gradient(45deg, #1d4ed8 0 5px, #1e3a8a 5px 10px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.26);
+  transform: rotate(var(--tilt, 0deg));
+}
+
+.card-back.tiny::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+}
+
 .presence {
   margin-top: 4px;
   color: var(--green) !important;
