@@ -662,14 +662,14 @@ button:disabled {
 .hand {
   display: flex;
   gap: 8px;
-  min-height: 142px;
+  min-height: 202px;
   max-width: 100%;
   overflow-x: scroll;
   overflow-y: visible;
   overscroll-behavior-inline: contain;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
-  padding: 10px 6px 14px;
+  padding: 68px 6px 14px;
   scrollbar-color: var(--gold) rgba(255, 255, 255, 0.1);
 }
 
@@ -727,6 +727,17 @@ button:disabled {
 .card:focus-visible::before {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+.hand .card::before {
+  bottom: auto;
+  top: -58px;
+  white-space: normal;
+}
+
+.hand .card:hover,
+.hand .card:focus-visible {
+  z-index: 45;
 }
 
 .card.playable {

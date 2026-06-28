@@ -12,7 +12,7 @@ const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 const goAgainRanks = new Set(["7", "K"]);
 const disconnectedAfterMs = 5000;
 const forcedDrawDelayMs = 1200;
-const testHostName = "Frux 24/03/2000";
+const testHostName = "TestAdminControl";
 const blockedWords = [
   "fuck",
   "shit",
