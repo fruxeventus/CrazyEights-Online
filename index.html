@@ -35,58 +35,12 @@
           <p>Choose how many players can join, create a room, and send the link to your friends. They only enter their name.</p>
         </div>
 
-        <div class="game-picker" id="gamePicker">
-          <article class="game-choice panel">
-            <div class="game-logo poker-logo" aria-hidden="true">
-              <span>♠</span>
-              <span>♥</span>
-              <span>♦</span>
-            </div>
-            <h3 id="pokerChoiceTitle">Poker</h3>
-            <button type="button" data-game-choice="poker">Play</button>
-          </article>
-
-          <article class="game-choice panel">
-            <div class="game-logo eights-logo" aria-hidden="true">
-              <span>8</span>
-            </div>
-            <h3 id="crazyChoiceTitle">Crazy Eights</h3>
-            <button type="button" data-game-choice="crazy-eights">Play</button>
-          </article>
-
-          <article class="game-choice panel">
-            <div class="game-logo blackjack-logo" aria-hidden="true">
-              <span>A</span>
-              <span>21</span>
-            </div>
-            <h3 id="blackjackChoiceTitle">Blackjack</h3>
-            <button type="button" data-game-choice="blackjack">Play</button>
-          </article>
-        </div>
-
-        <section class="setup-screen hidden" id="setupScreen">
-          <div class="setup-head">
-            <div>
-              <span class="eyebrow" id="selectedGameEyebrow">Selected game</span>
-              <h2 id="selectedGameTitle">Crazy Eights</h2>
-            </div>
-            <button class="secondary" id="backToGamesButton" type="button">Back to games</button>
-          </div>
-
-          <div class="home-grid">
+        <div class="home-grid">
           <form class="panel" id="createForm">
             <h3>Play</h3>
             <label>
               Your name
               <input id="createName" maxlength="18" autocomplete="nickname" placeholder="Player" />
-            </label>
-            <label class="hidden">
-              Game
-              <select id="gameTypeSelect">
-                <option value="crazy-eights" selected>Crazy Eights</option>
-                <option value="poker">Poker</option>
-                <option value="blackjack">Blackjack</option>
-              </select>
             </label>
             <label>
               Maximum players
@@ -137,20 +91,19 @@
             </label>
             <button type="submit">Join</button>
           </form>
-          </div>
+        </div>
 
-          <section class="rules home-rules" id="homeRules">
-            <h3 id="homeRulesTitle">How to play</h3>
-            <div class="rules-body" id="homeRulesText">
-              <p><strong>Goal:</strong> be the first player with no cards left.</p>
-              <ul>
-                <li>On your turn, play one card on the discard pile.</li>
-                <li>Your card must match the top card by suit or by rank.</li>
-                <li>If you cannot play, draw a card from the deck.</li>
-                <li>Some cards have special effects, like skipping, reversing, or making someone draw cards.</li>
-              </ul>
-            </div>
-          </section>
+        <section class="rules home-rules" id="homeRules">
+          <h3 id="homeRulesTitle">How to play</h3>
+          <div class="rules-body" id="homeRulesText">
+            <p><strong>Goal:</strong> be the first player with no cards left.</p>
+            <ul>
+              <li>On your turn, play one card on the discard pile.</li>
+              <li>Your card must match the top card by suit or by rank.</li>
+              <li>If you cannot play, draw a card from the deck.</li>
+              <li>Some cards have special effects, like skipping, reversing, or making someone draw cards.</li>
+            </ul>
+          </div>
         </section>
       </section>
 

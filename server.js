@@ -9,7 +9,6 @@ const rooms = new Map();
 
 const suits = ["hearts", "diamonds", "clubs", "spades"];
 const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
-const gameTypes = new Set(["crazy-eights", "poker", "blackjack"]);
 const goAgainRanks = new Set(["7", "K"]);
 const disconnectedAfterMs = 5000;
 const forcedDrawDelayMs = 1200;
@@ -74,11 +73,9 @@ async function handleApi(req, res) {
   if (req.url === "/api/create") {
     const code = makeCode();
     const maxPlayers = clamp(Number(body.maxPlayers) || 4, 2, 5);
-    const gameType = cleanGameType(body.gameType);
     const player = makePlayer(body.sessionId, body.name, true);
     rooms.set(code, {
       code,
-      gameType,
       maxPlayers,
       hostId: player.id,
       players: [player],
@@ -115,12 +112,10 @@ async function handleApi(req, res) {
   if (req.url === "/api/create-bot") {
     const code = makeCode();
     const difficulty = cleanBotDifficulty(body.difficulty);
-    const gameType = cleanGameType(body.gameType);
     const player = makePlayer(body.sessionId, body.name, true);
     const bot = makePlayer(`bot-${code}`, botName(difficulty), false, true);
     const room = {
       code,
-      gameType,
       maxPlayers: 2,
       hostId: player.id,
       players: [player, bot],
@@ -159,13 +154,11 @@ async function handleApi(req, res) {
   if (req.url === "/api/create-bot-watch") {
     const code = makeCode();
     const difficulty = cleanBotDifficulty(body.difficulty);
-    const gameType = cleanGameType(body.gameType);
     const spectator = makeSpectator(body.sessionId, body.name);
     const botOne = makePlayer(`bot-${code}-1`, `${botName(difficulty)} 1`, false, true);
     const botTwo = makePlayer(`bot-${code}-2`, `${botName(difficulty)} 2`, false, true);
     const room = {
       code,
-      gameType,
       maxPlayers: 2,
       hostId: spectator.id,
       players: [botOne, botTwo],
@@ -205,12 +198,10 @@ async function handleApi(req, res) {
 
   if (req.url === "/api/create-tutorial") {
     const code = makeCode();
-    const gameType = cleanGameType(body.gameType);
     const player = makePlayer(body.sessionId, body.name, true);
     const bot = makePlayer(`bot-${code}`, "Tutorial Bot", false, true);
     const room = {
       code,
-      gameType,
       maxPlayers: 2,
       hostId: player.id,
       players: [player, bot],
@@ -240,12 +231,8 @@ async function handleApi(req, res) {
       eventId: 0,
       createdAt: Date.now(),
     };
-    if (gameType === "crazy-eights") {
-      setupTutorialGame(room);
-      room.phase = "tutorial";
-    } else {
-      startGame(room);
-    }
+    setupTutorialGame(room);
+    room.phase = "tutorial";
     rooms.set(code, room);
     sendJson(res, 200, { code });
     return;
@@ -341,16 +328,6 @@ function handleAction(room, player, body) {
   const current = room.players[room.current];
   if (!current || current.id !== player.id) throw new PublicError("Je bent niet aan de beurt.");
 
-  if (room.gameType === "blackjack") {
-    handleBlackjackAction(room, player, body);
-    return;
-  }
-
-  if (room.gameType === "poker") {
-    handlePokerAction(room, player, body);
-    return;
-  }
-
   if (body.type === "draw") {
     updateMustDraw(room);
     if (room.pendingDraw > 0 && room.mustDrawPlayerId === player.id) {
@@ -403,14 +380,6 @@ function handleAction(room, player, body) {
 }
 
 function playBotTurn(room) {
-  if (room.gameType === "blackjack") {
-    playBlackjackBotTurn(room);
-    return;
-  }
-  if (room.gameType === "poker") {
-    playPokerBotTurn(room);
-    return;
-  }
   if (!room.botMode) throw new PublicError("Deze kamer heeft geen bot.");
   if (room.phase !== "playing") return;
   const bot = room.players[room.current];
@@ -490,18 +459,6 @@ function chooseBotSuit(bot, difficulty) {
 }
 
 function startGame(room) {
-  if (room.gameType === "blackjack") {
-    startBlackjack(room);
-    return;
-  }
-  if (room.gameType === "poker") {
-    startPoker(room);
-    return;
-  }
-  startCrazyEights(room);
-}
-
-function startCrazyEights(room) {
   room.deck = shuffle(makeDeck());
   room.discard = [];
   room.current = 0;
@@ -575,234 +532,6 @@ function setupTutorialGame(room) {
   room.lastEvent = null;
   room.eventId = 0;
   validateCards(room);
-}
-
-function startBlackjack(room) {
-  resetSimpleCardGame(room);
-  room.gameState = {
-    stood: [],
-    busts: [],
-  };
-  for (const player of room.players) {
-    player.hand = [drawCard(room), drawCard(room)];
-  }
-  room.phase = "playing";
-  finishInactiveBlackjackPlayers(room);
-  validateCards(room);
-}
-
-function handleBlackjackAction(room, player, body) {
-  if (body.type === "draw") {
-    player.hand.push(drawCard(room));
-    setEvent(room, { type: "draw", to: player.id, count: 1, cardIds: [player.hand[player.hand.length - 1].id], forced: false });
-    if (blackjackTotal(player.hand).total > 21) {
-      addUnique(room.gameState.busts, player.id);
-      addUnique(room.gameState.stood, player.id);
-      advanceBlackjackTurn(room);
-    }
-    return;
-  }
-  if (body.type === "finishTurn") {
-    addUnique(room.gameState.stood, player.id);
-    advanceBlackjackTurn(room);
-    return;
-  }
-  throw new PublicError("Kies hit of stand.");
-}
-
-function advanceBlackjackTurn(room) {
-  finishInactiveBlackjackPlayers(room);
-  if (room.phase === "finished") return;
-  const next = nextActiveSimpleIndex(room, (room.current + 1) % room.players.length, (player) => !room.gameState.stood.includes(player.id));
-  if (next < 0) {
-    finishBlackjack(room);
-    return;
-  }
-  room.current = next;
-}
-
-function finishInactiveBlackjackPlayers(room) {
-  for (const player of room.players) {
-    if (blackjackTotal(player.hand).total > 21) {
-      addUnique(room.gameState.busts, player.id);
-      addUnique(room.gameState.stood, player.id);
-    }
-  }
-  if (room.players.every((player) => room.gameState.stood.includes(player.id))) finishBlackjack(room);
-}
-
-function finishBlackjack(room) {
-  const ranked = room.players
-    .map((player) => ({ player, total: blackjackTotal(player.hand).total }))
-    .filter((item) => item.total <= 21)
-    .sort((a, b) => b.total - a.total || b.player.hand.length - a.player.hand.length);
-  room.phase = "finished";
-  room.winnerId = ranked[0]?.player.id || room.players[0]?.id || null;
-}
-
-function playBlackjackBotTurn(room) {
-  if (!room.botMode || room.phase !== "playing") return;
-  const bot = room.players[room.current];
-  if (!bot?.isBot) return;
-  const total = blackjackTotal(bot.hand).total;
-  const threshold = room.botDifficulty === "hard" ? 17 : room.botDifficulty === "easy" ? 15 : 16;
-  if (total < threshold) {
-    handleBlackjackAction(room, bot, { type: "draw" });
-  } else {
-    handleBlackjackAction(room, bot, { type: "finishTurn" });
-  }
-}
-
-function blackjackTotal(hand) {
-  let total = 0;
-  let aces = 0;
-  for (const card of hand) {
-    if (card.rank === "A") {
-      aces += 1;
-      total += 11;
-    } else if (["K", "Q", "J"].includes(card.rank)) {
-      total += 10;
-    } else {
-      total += Number(card.rank);
-    }
-  }
-  while (total > 21 && aces > 0) {
-    total -= 10;
-    aces -= 1;
-  }
-  return { total };
-}
-
-function startPoker(room) {
-  resetSimpleCardGame(room);
-  room.gameState = {
-    stood: [],
-    draws: {},
-  };
-  for (const player of room.players) {
-    player.hand = [];
-    for (let i = 0; i < 5; i += 1) player.hand.push(drawCard(room));
-  }
-  room.phase = "playing";
-  validateCards(room);
-}
-
-function handlePokerAction(room, player, body) {
-  room.gameState.draws[player.id] = room.gameState.draws[player.id] || 0;
-  if (body.type === "draw") {
-    if (room.gameState.draws[player.id] >= 2) throw new PublicError("Je hebt al genoeg gepakt.");
-    player.hand.push(drawCard(room));
-    room.gameState.draws[player.id] += 1;
-    setEvent(room, { type: "draw", to: player.id, count: 1, cardIds: [player.hand[player.hand.length - 1].id], forced: false });
-    if (room.gameState.draws[player.id] >= 2) addUnique(room.gameState.stood, player.id);
-    advancePokerTurn(room);
-    return;
-  }
-  if (body.type === "finishTurn") {
-    addUnique(room.gameState.stood, player.id);
-    advancePokerTurn(room);
-    return;
-  }
-  throw new PublicError("Kies draw of stand.");
-}
-
-function advancePokerTurn(room) {
-  if (room.players.every((player) => room.gameState.stood.includes(player.id))) {
-    finishPoker(room);
-    return;
-  }
-  const next = nextActiveSimpleIndex(room, (room.current + 1) % room.players.length, (player) => !room.gameState.stood.includes(player.id));
-  if (next < 0) finishPoker(room);
-  else room.current = next;
-}
-
-function finishPoker(room) {
-  const ranked = room.players
-    .map((player) => ({ player, score: pokerScore(player.hand) }))
-    .sort((a, b) => compareScore(b.score, a.score));
-  room.phase = "finished";
-  room.winnerId = ranked[0]?.player.id || null;
-}
-
-function playPokerBotTurn(room) {
-  if (!room.botMode || room.phase !== "playing") return;
-  const bot = room.players[room.current];
-  if (!bot?.isBot) return;
-  const score = pokerScore(bot.hand);
-  const draws = room.gameState.draws[bot.id] || 0;
-  const shouldDraw = draws < 2 && (score[0] < (room.botDifficulty === "hard" ? 2 : 1) || (room.botDifficulty === "easy" && Math.random() < 0.45));
-  handlePokerAction(room, bot, { type: shouldDraw ? "draw" : "finishTurn" });
-}
-
-function pokerScore(hand) {
-  const values = hand.map((card) => rankValue(card.rank)).sort((a, b) => b - a);
-  const counts = new Map();
-  for (const value of values) counts.set(value, (counts.get(value) || 0) + 1);
-  const groups = [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0]);
-  const flushSuit = suits.find((suit) => hand.filter((card) => card.suit === suit).length >= 5);
-  const unique = [...new Set(values)];
-  if (unique.includes(14)) unique.push(1);
-  const straightHigh = unique.find((value, index) => unique.slice(index, index + 5).every((item, offset) => item === value - offset)) || 0;
-  if (flushSuit && straightHigh) return [8, straightHigh];
-  if (groups[0]?.[1] === 4) return [7, groups[0][0], groups[1]?.[0] || 0];
-  if (groups[0]?.[1] === 3 && groups[1]?.[1] >= 2) return [6, groups[0][0], groups[1][0]];
-  if (flushSuit) return [5, ...values.slice(0, 5)];
-  if (straightHigh) return [4, straightHigh];
-  if (groups[0]?.[1] === 3) return [3, groups[0][0], ...values.filter((value) => value !== groups[0][0]).slice(0, 2)];
-  if (groups[0]?.[1] === 2 && groups[1]?.[1] === 2) return [2, groups[0][0], groups[1][0], ...values.filter((value) => value !== groups[0][0] && value !== groups[1][0]).slice(0, 1)];
-  if (groups[0]?.[1] === 2) return [1, groups[0][0], ...values.filter((value) => value !== groups[0][0]).slice(0, 3)];
-  return [0, ...values.slice(0, 5)];
-}
-
-function compareScore(a, b) {
-  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
-    const diff = (a[i] || 0) - (b[i] || 0);
-    if (diff) return diff;
-  }
-  return 0;
-}
-
-function rankValue(rank) {
-  if (rank === "A") return 14;
-  if (rank === "K") return 13;
-  if (rank === "Q") return 12;
-  if (rank === "J") return 11;
-  return Number(rank);
-}
-
-function resetSimpleCardGame(room) {
-  room.deck = shuffle(makeDeck().filter((card) => card.rank !== "Joker"));
-  room.discard = [];
-  room.current = 0;
-  room.direction = 1;
-  room.chosenSuit = null;
-  room.pendingDraw = 0;
-  room.pendingDrawRank = null;
-  room.freePlayPlayerId = null;
-  room.winnerId = null;
-  room.winnerReason = null;
-  room.notice = null;
-  room.mustDrawPlayerId = null;
-  room.mustDrawSince = null;
-  room.resolvingForcedDraw = false;
-  room.turnHistory = [];
-  room.normalDrawPlayerId = null;
-  room.normalDrawCount = 0;
-  room.lastEvent = null;
-  room.eventId = 0;
-  for (const player of room.players) player.hand = [];
-}
-
-function nextActiveSimpleIndex(room, start, predicate) {
-  for (let offset = 0; offset < room.players.length; offset += 1) {
-    const index = (start + offset) % room.players.length;
-    if (predicate(room.players[index])) return index;
-  }
-  return -1;
-}
-
-function addUnique(list, value) {
-  if (!list.includes(value)) list.push(value);
 }
 
 function cardById(id) {
@@ -976,11 +705,6 @@ function cloneCards(cards) {
 }
 
 function updateMustDraw(room) {
-  if (room.gameType && room.gameType !== "crazy-eights") {
-    room.mustDrawPlayerId = null;
-    room.mustDrawSince = null;
-    return;
-  }
   if (room.phase !== "playing") {
     room.mustDrawPlayerId = null;
     room.mustDrawSince = null;
@@ -1070,7 +794,6 @@ function publicState(room, sessionId) {
 
   return {
     code: room.code,
-    gameType: room.gameType || "crazy-eights",
     localOrigin: getPreferredLocalOrigin(),
     maxPlayers: room.maxPlayers,
     phase: room.phase,
@@ -1082,7 +805,7 @@ function publicState(room, sessionId) {
     canUseHostTools: canUseHostTools(room, me),
     currentPlayerId: room.phase === "tutorial" ? null : room.players[room.current]?.id || null,
     deckCount: room.deck.length,
-    topCard: (room.gameType || "crazy-eights") === "crazy-eights" ? room.discard[room.discard.length - 1] || null : null,
+    topCard: room.discard[room.discard.length - 1] || null,
     chosenSuit: room.chosenSuit,
     pendingDraw: room.pendingDraw,
     pendingDrawRank: room.pendingDrawRank,
@@ -1097,9 +820,9 @@ function publicState(room, sessionId) {
     winnerReason: room.winnerReason || null,
     winner: room.winnerId ? room.players.find((player) => player.id === room.winnerId) : null,
     availableCards: canUseHostTools(room, me) ? [...room.deck].sort(sortCards) : [],
-    canUndo: Boolean((room.gameType || "crazy-eights") === "crazy-eights" && isCurrentViewer && room.turnHistory.some((entry) => entry.playerId === sessionId)),
-    canFinishTurn: canFinishNow(room, me, isCurrentViewer),
-    canDraw: canDrawActionNow(room, me, isCurrentViewer),
+    canUndo: Boolean(isCurrentViewer && room.turnHistory.some((entry) => entry.playerId === sessionId)),
+    canFinishTurn: Boolean(isCurrentViewer && room.mustDrawPlayerId !== sessionId && me && !needsFollowUpAction(room, me)),
+    canDraw: Boolean(me && canDrawNow(room, me)),
     players: room.players.map((player) => ({
       id: player.id,
       name: player.name,
@@ -1111,30 +834,8 @@ function publicState(room, sessionId) {
     })),
     viewer: spectator ? { id: spectator.id, name: spectator.name, spectator: true } : null,
     hand,
-    playableCardIds: (room.gameType || "crazy-eights") === "crazy-eights"
-      ? hand.filter((card) => canViewerPlayAnother && isPlayable(room, card, me)).map((card) => card.id)
-      : [],
+    playableCardIds: hand.filter((card) => canViewerPlayAnother && isPlayable(room, card, me)).map((card) => card.id),
   };
-}
-
-function canFinishNow(room, player, isCurrentViewer) {
-  if (!player || !isCurrentViewer) return false;
-  const type = room.gameType || "crazy-eights";
-  if (type === "blackjack") return !room.gameState?.stood?.includes(player.id);
-  if (type === "poker") return !room.gameState?.stood?.includes(player.id);
-  return Boolean(room.mustDrawPlayerId !== player.id && !needsFollowUpAction(room, player));
-}
-
-function canDrawActionNow(room, player, isCurrentViewer) {
-  if (!player || !isCurrentViewer || room.phase !== "playing") return false;
-  const type = room.gameType || "crazy-eights";
-  if (type === "blackjack") {
-    return !room.gameState?.stood?.includes(player.id) && blackjackTotal(player.hand).total < 21;
-  }
-  if (type === "poker") {
-    return !room.gameState?.stood?.includes(player.id) && (room.gameState?.draws?.[player.id] || 0) < 2;
-  }
-  return canDrawNow(room, player);
 }
 
 function makeDeck() {
@@ -1315,11 +1016,6 @@ function cleanBotDifficulty(difficulty) {
   return ["easy", "medium", "hard"].includes(difficulty) ? difficulty : "medium";
 }
 
-function cleanGameType(gameType) {
-  const cleaned = String(gameType || "crazy-eights").trim().toLowerCase();
-  return gameTypes.has(cleaned) ? cleaned : "crazy-eights";
-}
-
 function botName(difficulty) {
   if (difficulty === "easy") return "Easy Bot";
   if (difficulty === "hard") return "Hard Bot";
@@ -1352,9 +1048,7 @@ function cryptoId() {
 
 function serveFile(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const requested = url.pathname === "/" ||
-    /^\/kamers\/[A-Z0-9]+(?:\/join)?\/?$/i.test(url.pathname) ||
-    /^\/games\/(?:poker|crazy-eights|blackjack)\/?$/i.test(url.pathname)
+  const requested = url.pathname === "/" || /^\/kamers\/[A-Z0-9]+(?:\/join)?\/?$/i.test(url.pathname)
     ? "/index.html"
     : url.pathname;
   const filePath = path.normalize(path.join(ROOT, requested));

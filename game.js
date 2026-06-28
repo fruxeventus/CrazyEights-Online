@@ -8,18 +8,12 @@ const languageSelect = $("#languageSelect");
 const languageLabel = $("#languageLabel");
 const heroTitle = $(".hero h2");
 const heroCopy = $(".hero p");
-const gamePicker = $("#gamePicker");
-const setupScreen = $("#setupScreen");
-const selectedGameTitle = $("#selectedGameTitle");
-const selectedGameEyebrow = $("#selectedGameEyebrow");
-const backToGamesButton = $("#backToGamesButton");
 const createForm = $("#createForm");
 const codeJoinForm = $("#codeJoinForm");
 const joinForm = $("#joinForm");
 const createName = $("#createName");
 const joinName = $("#joinName");
 const roomCodeInput = $("#roomCodeInput");
-const gameTypeSelect = $("#gameTypeSelect");
 const playerCount = $("#playerCount");
 const botDifficulty = $("#botDifficulty");
 const botButton = $("#botButton");
@@ -89,27 +83,19 @@ let lastBotTurnKey = "";
 let language = localStorage.getItem("crazy-eights-language") || "en";
 let tutorialStep = 0;
 let tutorialBotFirstTurnPending = false;
-let selectedGameType = getGameTypeFromUrl();
 
 const translations = {
   en: {
-    appTitle: "Card Game Hub",
+    appTitle: "Crazy Eights Multiplayer",
     appSubtitle: "Local online cards with friends",
     language: "Language",
     connectedNone: "Not connected",
     notInRoom: "Not in room",
     connected: "Connected",
-    homeTitle: "Pick a game and share the link",
-    homeCopy: "Choose Poker, Crazy Eights, or Blackjack. Then create a room, play a bot, or start a tutorial bot.",
-    pickGameTitle: "Choose a card game",
-    pickGameCopy: "Pick a game first. Then you can create a room, join with a code, play a bot, or start a tutorial.",
-    selectedGame: "Selected game",
-    backToGames: "Back to games",
+    homeTitle: "Create a room and share the link",
+    homeCopy: "Choose how many players can join, create a room, and send the link to your friends. They only enter their name.",
     play: "Play",
-    game: "Game",
     crazyEights: "Crazy Eights",
-    poker: "Poker",
-    blackjack: "Blackjack",
     yourName: "Your name",
     playerPlaceholder: "Player",
     maxPlayers: "Maximum players",
@@ -169,14 +155,9 @@ const translations = {
     giveCard: "Give card",
     undo: "Undo",
     finishTurn: "Finish turn",
-    stand: "Stand",
-    pokerDraw: "Draw",
-    blackjackHit: "Hit",
     startGame: "Start game",
     rulesTitle: "How to play",
     rulesText: `<p><strong>Goal:</strong> be the first player with no cards left.</p><p>On your turn, play a glowing card onto the discard pile. Your card must match the top card by suit or by rank, unless a special card says otherwise.</p><ul><li>If no card glows at the start of your turn, draw one card, then finish your turn.</li><li>If you played a 7 or King and cannot play a follow-up card, draw once. If you still cannot play, draw one more card, then finish your turn.</li><li>Use Undo to take back cards played during your current turn. Press Finish turn when you are done.</li><li>Hover over a card to see its effect.</li></ul>`,
-    pokerRulesText: `<p><strong>Goal:</strong> win the showdown with the best poker hand.</p><ul><li>Everyone gets five cards.</li><li>On your turn, draw up to two extra cards or stand.</li><li>When everyone stands, the best hand wins.</li><li>Bots use the selected difficulty to decide whether to draw or stand.</li></ul>`,
-    blackjackRulesText: `<p><strong>Goal:</strong> get closer to 21 than the others without going over.</p><ul><li>Hit to draw another card.</li><li>Stand when you want to keep your total.</li><li>Face cards count as 10. Aces count as 11 or 1.</li><li>When everyone stands or busts, the best total wins.</li></ul>`,
     rulesRoomTitle: "How to play",
     rulesRoomText: `<p><strong>Goal:</strong> be the first player with no cards left.</p><ul><li>Match the top card by suit or rank.</li><li>Draw from the deck if you cannot play.</li><li>Jack lets you choose a suit. Joker can always be played.</li><li>2 makes the next player draw two cards. Jokers add five cards.</li><li>7 and King give you another turn. 8 skips. Ace reverses. 10 rotates hands.</li></ul>`,
     chat: "Chat",
@@ -229,9 +210,6 @@ const translations = {
     connectedWord: "connected",
     offline: "offline",
     watchingBots: "Watching two bots play.",
-    pokerTurn: "Your poker turn. Draw up to two cards, or stand for the showdown.",
-    blackjackTurn: "Your blackjack turn. Hit to draw, or stand to keep your total.",
-    simpleGameOtherTurn: "{name} is thinking.",
     defaultPlayer: "Player",
     easyBotName: "Easy Bot",
     mediumBotName: "Medium Bot",
@@ -622,27 +600,6 @@ languageSelect.addEventListener("change", () => {
   render();
 });
 
-gameTypeSelect.addEventListener("change", () => {
-  selectedGameType = gameTypeSelect.value;
-  updateHomeRules();
-  renderCreateHome();
-});
-
-for (const button of document.querySelectorAll("[data-game-choice]")) {
-  button.addEventListener("click", () => {
-    selectedGameType = button.dataset.gameChoice;
-    gameTypeSelect.value = selectedGameType;
-    history.pushState({}, "", `/games/${selectedGameType}/`);
-    showGameSetup();
-  });
-}
-
-backToGamesButton.addEventListener("click", () => {
-  selectedGameType = "";
-  history.pushState({}, "", "/");
-  showGamePicker();
-});
-
 createName.value = localStorage.getItem("pesten-name") || "";
 joinName.value = localStorage.getItem("pesten-name") || "";
 
@@ -653,7 +610,6 @@ createForm.addEventListener("submit", async (event) => {
   const result = await api("/api/create", {
     name,
     maxPlayers: Number(playerCount.value),
-    gameType: gameTypeSelect.value,
     sessionId,
   });
   setRoomUrl(result.code, sessionId);
@@ -667,7 +623,6 @@ botButton.addEventListener("click", async () => {
   const result = await api("/api/create-bot", {
     name,
     difficulty: botDifficulty.value,
-    gameType: gameTypeSelect.value,
     sessionId,
   });
   setRoomUrl(result.code, sessionId);
@@ -678,7 +633,7 @@ tutorialButton.addEventListener("click", async () => {
   const name = cleanName(createName.value);
   localStorage.setItem("pesten-name", name);
   sessionId = crypto.randomUUID();
-  const result = await api("/api/create-tutorial", { name, gameType: gameTypeSelect.value, sessionId });
+  const result = await api("/api/create-tutorial", { name, sessionId });
   setRoomUrl(result.code, sessionId);
   enterRoom(result.code);
 });
@@ -707,7 +662,6 @@ codeJoinForm.addEventListener("submit", async (event) => {
       const result = await api("/api/create-bot-watch", {
         name,
         difficulty: botDifficulty.value,
-        gameType: gameTypeSelect.value,
         sessionId,
       });
       setRoomUrl(result.code, sessionId);
@@ -720,7 +674,7 @@ codeJoinForm.addEventListener("submit", async (event) => {
   } catch (error) {
     codeJoinForm.querySelector(".panel-copy").textContent = error.message;
     room = "";
-    history.pushState({}, "", selectedGameType ? `/games/${selectedGameType}/` : "/");
+    history.pushState({}, "", "/");
   }
 });
 
@@ -770,7 +724,6 @@ suitDialog.addEventListener("close", () => {
 leaveButton.addEventListener("click", () => {
   room = "";
   state = null;
-  selectedGameType = "";
   history.pushState({}, "", "/");
   render();
 });
@@ -790,8 +743,6 @@ copyLinkButton.addEventListener("click", async () => {
 
 window.addEventListener("popstate", () => {
   room = getRoomFromUrl();
-  selectedGameType = getGameTypeFromUrl();
-  if (selectedGameType) gameTypeSelect.value = selectedGameType;
   state = null;
   poll();
 });
@@ -878,14 +829,6 @@ function applyLanguage() {
   createForm.querySelector("h3").textContent = t("play");
   setLabelText(createName, t("yourName"));
   createName.placeholder = t("playerPlaceholder");
-  setLabelText(gameTypeSelect, t("game"));
-  gameTypeSelect.options[0].textContent = t("crazyEights");
-  gameTypeSelect.options[1].textContent = t("poker");
-  gameTypeSelect.options[2].textContent = t("blackjack");
-  $("#crazyChoiceTitle").textContent = t("crazyEights");
-  $("#pokerChoiceTitle").textContent = t("poker");
-  $("#blackjackChoiceTitle").textContent = t("blackjack");
-  for (const button of document.querySelectorAll("[data-game-choice]")) button.textContent = t("play");
   setLabelText(playerCount, t("maxPlayers"));
   [...playerCount.options].forEach((option) => {
     option.textContent = `${option.value} ${t("players")}`;
@@ -922,7 +865,7 @@ function applyLanguage() {
   finishTurnButton.textContent = t("finishTurn");
   startButton.textContent = t("startGame");
   homeRulesTitle.textContent = t("rulesTitle");
-  updateHomeRules();
+  homeRulesText.innerHTML = t("rulesText");
   tutorialHomePanel.querySelector(".eyebrow").textContent = t("tutorialEyebrow");
   tutorialHomeTitle.textContent = t("tutorialHomeTitle");
   tutorialHomeCopy.textContent = t("tutorialHomeCopy");
@@ -947,23 +890,6 @@ function applyLanguage() {
   closeCardPickerButton.textContent = t("close");
 }
 
-function updateHomeRules() {
-  if (!homeRulesText) return;
-  homeRulesText.innerHTML = rulesTextForGame(gameTypeSelect.value);
-}
-
-function rulesTextForGame(gameType) {
-  if (gameType === "poker") return t("pokerRulesText");
-  if (gameType === "blackjack") return t("blackjackRulesText");
-  return t("rulesText");
-}
-
-function gameLabel(gameType) {
-  if (gameType === "poker") return t("poker");
-  if (gameType === "blackjack") return t("blackjack");
-  return t("crazyEights");
-}
-
 function setLabelText(control, text) {
   const label = control.closest("label");
   if (!label) return;
@@ -972,23 +898,17 @@ function setLabelText(control, text) {
 }
 
 function render() {
-  selectedGameType = room ? selectedGameType : getGameTypeFromUrl();
-  if (selectedGameType) gameTypeSelect.value = selectedGameType;
   const inRoom = Boolean(room && state);
   homeScreen.classList.toggle("hidden", inRoom);
   roomScreen.classList.toggle("hidden", !inRoom);
   joinForm.classList.add("hidden");
   createForm.classList.remove("hidden");
   codeJoinForm.classList.remove("hidden");
-  if (!inRoom && !room) {
-    if (selectedGameType) showGameSetup();
-    else showGamePicker();
-  }
+  if (!inRoom && !room) renderCreateHome();
   if (!inRoom) return;
 
   const me = state.players.find((player) => player.isYou);
   const current = state.players.find((player) => player.id === state.currentPlayerId);
-  const simpleCardGame = state.gameType === "poker" || state.gameType === "blackjack";
   const isMyTurn = me && state.currentPlayerId === me.id && state.phase === "playing";
   const isTutorialTour = state.tutorialMode && state.phase === "tutorial";
   const cannotPlay = isMyTurn && state.playableCardIds.length === 0;
@@ -1007,8 +927,8 @@ function render() {
   hostWinButton.hidden = !state.canUseHostTools || state.phase === "finished";
   giveCardButton.hidden = !state.canUseHostTools || state.phase !== "playing";
   chatPanel.hidden = Boolean(state.botMode);
-  drawButton.title = state.gameType === "blackjack" ? t("blackjackHit") : state.gameType === "poker" ? t("pokerDraw") : t("chooseCard");
-  finishTurnButton.textContent = simpleCardGame ? t("stand") : t("finishTurn");
+  drawButton.title = t("chooseCard");
+  finishTurnButton.textContent = t("finishTurn");
   drawButton.disabled = isTutorialTour || !state.canDraw;
   undoButton.disabled = isTutorialTour || !state.canUndo;
   finishTurnButton.disabled = isTutorialTour || !state.canFinishTurn;
@@ -1039,7 +959,6 @@ function render() {
   for (const cardEl of hand.querySelectorAll(".card")) {
     cardEl.addEventListener("click", () => {
       if (isTutorialTour) return;
-      if (simpleCardGame) return;
       const cardId = cardEl.dataset.id;
       const card = state.hand.find((item) => item.id === cardId);
       if (!state.playableCardIds.includes(cardId)) return;
@@ -1063,10 +982,6 @@ function render() {
     message.textContent = t("watchingBots");
   } else if (isTutorialTour) {
     message.textContent = t("tourNext");
-  } else if (isMyTurn && state.gameType === "blackjack") {
-    message.textContent = t("blackjackTurn");
-  } else if (isMyTurn && state.gameType === "poker") {
-    message.textContent = t("pokerTurn");
   } else if (isMyTurn) {
     const stackCard = state.pendingDrawRank === "Joker" ? "joker" : "2";
     if (state.pendingDraw > 0) {
@@ -1081,11 +996,7 @@ function render() {
       message.textContent = t("yourTurn");
     }
   } else {
-    message.textContent = current
-      ? simpleCardGame
-        ? t("simpleGameOtherTurn", { name: displayName(current) })
-        : t("currentTurn", { name: displayName(current) })
-      : t("waiting");
+    message.textContent = current ? t("currentTurn", { name: displayName(current) }) : t("waiting");
   }
 
   const noticeText = state.notice ? noticeMessage(state.notice, me) : "";
@@ -1107,8 +1018,6 @@ function renderJoin(errorText = "") {
   heroCopy.textContent = t("joinCopy");
   createForm.classList.add("hidden");
   codeJoinForm.classList.add("hidden");
-  gamePicker.classList.add("hidden");
-  setupScreen.classList.remove("hidden");
   tutorialHomePanel.classList.add("hidden");
   joinForm.classList.remove("hidden");
   if (joinRenderedFor !== room) {
@@ -1121,30 +1030,11 @@ function renderJoin(errorText = "") {
 }
 
 function renderCreateHome() {
+  heroTitle.textContent = t("homeTitle");
+  heroCopy.textContent = t("homeCopy");
   createForm.classList.remove("hidden");
   codeJoinForm.classList.remove("hidden");
   tutorialHomePanel.classList.remove("hidden");
-}
-
-function showGamePicker() {
-  heroTitle.textContent = t("pickGameTitle");
-  heroCopy.textContent = t("pickGameCopy");
-  gamePicker.classList.remove("hidden");
-  setupScreen.classList.add("hidden");
-}
-
-function showGameSetup() {
-  if (!selectedGameType) selectedGameType = gameTypeSelect.value || "crazy-eights";
-  gameTypeSelect.value = selectedGameType;
-  heroTitle.textContent = t("homeTitle");
-  heroCopy.textContent = t("homeCopy");
-  selectedGameEyebrow.textContent = t("selectedGame");
-  selectedGameTitle.textContent = gameLabel(selectedGameType);
-  backToGamesButton.textContent = t("backToGames");
-  gamePicker.classList.add("hidden");
-  setupScreen.classList.remove("hidden");
-  updateHomeRules();
-  renderCreateHome();
 }
 
 function renderChat(nextState) {
@@ -1229,7 +1119,7 @@ function renderTutorial(nextState) {
 
   const me = nextState.players.find((player) => player.isYou);
   const isMyTurn = me && nextState.currentPlayerId === me.id && nextState.phase === "playing";
-  tutorialTitle.textContent = `${gameLabel(nextState.gameType)} ${t("tutorialEyebrow")}`;
+  tutorialTitle.textContent = t("tutorialTitle");
   tutorialNextButton.hidden = nextState.phase !== "tutorial";
 
   if (nextState.phase === "tutorial") {
@@ -1237,22 +1127,6 @@ function renderTutorial(nextState) {
     tutorialText.textContent = t(step.key);
     tutorialNextButton.textContent = tutorialStep >= tutorialTourSteps.length - 1 ? t("tourStartGame") : t("tourNext");
     roomScreen.classList.add("tutorial-tour", `tutorial-point-${step.point}`);
-    return;
-  }
-
-  if (nextState.gameType === "blackjack") {
-    tutorialText.textContent = nextState.currentPlayerId === me?.id
-      ? t("blackjackTurn")
-      : t("tutorialBotTurn");
-    roomScreen.classList.add(nextState.currentPlayerId === me?.id ? "tutorial-point-deck" : "tutorial-point-bot");
-    return;
-  }
-
-  if (nextState.gameType === "poker") {
-    tutorialText.textContent = nextState.currentPlayerId === me?.id
-      ? t("pokerTurn")
-      : t("tutorialBotTurn");
-    roomScreen.classList.add(nextState.currentPlayerId === me?.id ? "tutorial-point-deck" : "tutorial-point-bot");
     return;
   }
 
@@ -1692,11 +1566,6 @@ function setRoomUrl(code, playerId = getPlayerFromUrl()) {
 function getRoomFromUrl() {
   const pathRoom = location.pathname.match(/^\/kamers\/([^/]+)(?:\/join)?\/?$/i)?.[1];
   return (pathRoom || new URLSearchParams(location.search).get("room") || "").trim().toUpperCase();
-}
-
-function getGameTypeFromUrl() {
-  const game = location.pathname.match(/^\/games\/(poker|crazy-eights|blackjack)\/?$/i)?.[1] || "";
-  return game.toLowerCase();
 }
 
 function getPlayerFromUrl() {

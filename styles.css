@@ -199,95 +199,6 @@ label,
   gap: 14px;
 }
 
-.game-picker {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.game-choice {
-  display: grid;
-  min-height: 360px;
-  align-content: center;
-  justify-items: center;
-  text-align: center;
-  gap: 18px;
-}
-
-.game-choice h3 {
-  margin: 0;
-  font-size: clamp(1.55rem, 3vw, 2.2rem);
-}
-
-.game-choice button {
-  width: min(260px, 100%);
-}
-
-.game-logo {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 150px;
-  height: 150px;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background: #fffaf0;
-  color: #111827;
-  box-shadow: 0 20px 34px rgba(0, 0, 0, 0.28);
-  font-weight: 950;
-}
-
-.poker-logo {
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0;
-  padding: 18px;
-  font-size: 2.5rem;
-}
-
-.poker-logo span:nth-child(2),
-.poker-logo span:nth-child(3) {
-  color: #dc2626;
-}
-
-.eights-logo {
-  font-size: 5.5rem;
-}
-
-.blackjack-logo {
-  grid-template-rows: 1fr auto;
-  font-size: 4rem;
-}
-
-.blackjack-logo span:last-child {
-  margin-bottom: 18px;
-  padding: 3px 11px;
-  border-radius: 999px;
-  background: #111827;
-  color: #fffaf0;
-  font-size: 1.15rem;
-}
-
-.setup-screen {
-  display: grid;
-  gap: 14px;
-}
-
-.setup-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-}
-
-.setup-head h2 {
-  margin-top: 4px;
-  font-size: clamp(1.8rem, 4vw, 3rem);
-}
-
 .home-grid.single {
   grid-template-columns: minmax(0, 520px);
 }
@@ -1283,7 +1194,6 @@ dialog::backdrop {
 
 @media (max-width: 780px) {
   .home-grid,
-  .game-picker,
   .room-head,
   .share-panel,
   #roomScreen {
