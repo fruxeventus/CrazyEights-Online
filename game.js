@@ -106,6 +106,7 @@ const translations = {
     hard: "Hard",
     playBot: "Play against bot",
     tutorialBot: "Start tutorial bot",
+    tutorialEyebrow: "Tutorial",
     tutorialHomeTitle: "Learn with a bot",
     tutorialHomeCopy: "A guided game shows the board, the bot's open hand, and what to do next.",
     tutorialTitle: "Tutorial bot",
@@ -207,6 +208,21 @@ const translations = {
     bot: "bot",
     connectedWord: "connected",
     offline: "offline",
+    watchingBots: "Watching two bots play.",
+    defaultPlayer: "Player",
+    easyBotName: "Easy Bot",
+    mediumBotName: "Medium Bot",
+    hardBotName: "Hard Bot",
+    tutorialBotName: "Tutorial Bot",
+    helpJoker: "Joker: can always be played. The next player must draw 5 unless they stack a Joker.",
+    helpTwo: "2: the next player must draw 2 unless they stack another 2.",
+    helpSeven: "7: play again before finishing your turn.",
+    helpKing: "King: play again before finishing your turn.",
+    helpEight: "8: skips the next player. In 2-player mode, you must continue like a 7.",
+    helpAce: "Ace: reverses direction. In 2-player mode, you must continue like a 7.",
+    helpTen: "10: rotates everyone's hands.",
+    helpJack: "Jack: choose the suit for the next player.",
+    helpNormal: "No special ability. Match by suit or rank, then finish your turn.",
   },
 };
 
@@ -412,28 +428,139 @@ translations.zh = {
   appSubtitle: "和朋友一起本地联机打牌",
   language: "语言",
   connectedNone: "未连接",
+  notInRoom: "未进入房间",
   connected: "已连接",
   homeTitle: "创建房间并分享链接",
+  homeCopy: "选择最多可加入的玩家人数，创建房间，然后把链接发给朋友。他们只需要输入名字。",
   play: "开始",
   yourName: "你的名字",
+  playerPlaceholder: "玩家",
   maxPlayers: "最多玩家",
+  players: "名玩家",
   createRoom: "创建房间",
   botLevel: "机器人难度",
   easy: "简单",
   medium: "普通",
   hard: "困难",
   playBot: "对战机器人",
+  tutorialBot: "开始教程机器人",
+  tutorialEyebrow: "教程",
+  tutorialHomeTitle: "和机器人学习",
+  tutorialHomeCopy: "教程会介绍牌桌、机器人的明牌手牌，以及下一步该做什么。",
+  tutorialTitle: "教程机器人",
+  tutorialStart: "点击黑桃 5。它和桌上的 5 点数相同。",
+  tutorialAfterPlay: "很好。你出了一张牌。你可以撤销，或点击结束回合让机器人行动。",
+  tutorialGoAgain: "这张牌让你继续行动。打出高亮的牌，或完成必要动作后结束回合。",
+  tutorialBotTurn: "观察机器人。教程里机器人会明牌，所以你能看到它为什么这样出牌。",
+  tutorialDraw: "你不能出牌。请从牌堆摸一张牌。",
+  tutorialContinue: "打出高亮的牌，完成后点击结束回合。",
+  tourNext: "点击继续",
+  tourStartGame: "开始教程游戏",
+  tourTable: "这是牌桌。中间的牌就是你要匹配的牌。",
+  tourHand: "这是你的手牌。能出的牌会发亮。",
+  tourDeck: "这是摸牌堆。没有牌可出时点击这里摸牌。",
+  tourButtons: "撤销会收回你本回合出的牌。结束回合会结束你的回合。",
+  tourBot: "这是教程机器人。只有在教程里，机器人会明牌，方便你学习它的选择。",
+  mustDrawYou: "你不能出牌。请摸一张牌。",
+  mustDrawYouForced: "你不能叠 {card}。游戏会帮你摸 {count} 张牌。",
+  mustDrawOther: "{name} 不能出牌，必须摸牌。",
+  mustDrawOtherForced: "{name} 不能叠 {card}，必须摸 {count} 张牌。",
+  eventDrew: "{name} 摸了 {count} 张牌。",
+  eventForcedDrew: "{name} 被迫摸了 {count} 张牌。",
+  eventTen: "{name} 出了 10。所有人交换手牌。",
+  eventJoker: "{name} 出了 Joker。下一位必须叠 Joker 或摸 5 张。",
+  eventTwo: "{name} 出了 2。下一位必须叠 2 或摸 2 张。",
   joinCodeTitle: "用代码加入",
+  joinCodeCopy: "使用上面的名字，然后输入朋友的房间代码。",
+  roomCode: "房间代码",
   joinCode: "加入房间",
+  join: "加入",
+  invited: "你被邀请加入一局疯狂八点。",
+  room: "房间",
+  status: "状态",
+  waiting: "等待中",
   back: "返回",
+  shareLink: "分享这个链接",
   copyLink: "复制链接",
+  copied: "已复制",
+  selectLink: "选择链接",
+  waitingPlayers: "等待玩家加入。",
+  next: "下一位",
+  yourHand: "你的手牌",
+  you: "你",
+  hostWin: "测试：房主获胜",
+  giveCard: "给一张牌",
+  undo: "撤销",
+  finishTurn: "结束回合",
+  startGame: "开始游戏",
   rulesTitle: "新手规则",
   rulesRoomTitle: "本版本规则",
-  rulesText: `<p><strong>目标：</strong>最先出完所有手牌。</p><ul><li>轮到你时，把一张牌放到弃牌堆上。</li><li>你的牌必须和最上面的牌同花色或同点数。</li><li>如果不能出牌，就从牌堆摸一张。</li><li>特殊牌可以跳过、反转、再来一回合、换手牌或让别人摸牌。</li></ul>`,
-  rulesRoomText: `<p><strong>目标：</strong>最先出完所有手牌。</p><ul><li>出同花色或同点数的牌。</li><li>不能出牌就摸一张。</li><li>J 可以选择花色。 Joker 随时可以出。</li><li>2 让下家摸两张。 Joker 增加五张。</li><li>7 和 K 再来一回合。8 跳过。A 反转。10 轮换手牌。</li></ul>`,
+  rulesText: `<p><strong>目标：</strong>最先出完所有手牌。</p><p>轮到你时，把发亮的牌放到弃牌堆上。你的牌必须和最上面的牌同花色或同点数，除非特殊牌有其他效果。</p><ul><li>如果回合开始时没有牌发亮，摸一张牌，然后结束回合。</li><li>如果你出了 7、K，或在双人模式出了 A、8，却不能继续出牌，先摸一张。如果还是不能出，再摸一张，然后结束回合。</li><li>撤销可以收回本回合出的牌。完成动作后点击结束回合。</li><li>把鼠标放在牌上可以查看它的效果。</li></ul>`,
+  rulesRoomText: `<p><strong>目标：</strong>最先出完所有手牌。</p><ul><li>出同花色或同点数的牌。</li><li>不能出牌时就摸牌。</li><li>J 可以选择花色。Joker 随时可以出。</li><li>2 让下一位摸两张。Joker 增加五张。</li><li>7 和 K 必须继续行动。双人模式里 A 和 8 也一样。10 会轮换手牌。</li></ul>`,
   chat: "聊天",
   messages: "消息",
+  chatPlaceholder: "输入消息",
   send: "发送",
+  endGame: "游戏结束",
+  won: "获胜",
+  winnerKnown: "胜者已确定。",
+  viewTable: "查看牌桌",
+  chooseSuit: "选择花色",
+  hearts: "红心",
+  diamonds: "方块",
+  clubs: "梅花",
+  spades: "黑桃",
+  chooseCard: "选择一张牌",
+  pickerCopy: "只显示还在摸牌堆里的牌。",
+  close: "关闭",
+  phaseWaiting: "等待中",
+  phasePlaying: "游戏中",
+  phaseFinished: "已结束",
+  shareStart: "分享链接。至少 2 名玩家加入后即可开始。",
+  waitHost: "等待房主开始游戏。",
+  finished: "游戏结束。",
+  wonSuffix: " 获胜。",
+  yourTurn: "轮到你了。出牌或摸牌。",
+  yourStackTurn: "轮到你了。请出一张 {card}。",
+  autoDraw: "你不能出 {card}。游戏马上会帮你摸 {count} 张牌。",
+  cannotPlay: "你不能出牌。请摸一张牌。",
+  cannotPlayAnymore: "你不能继续出牌了。请结束回合。",
+  currentTurn: "轮到 {name}。",
+  overlayTurn: "轮到 {name}",
+  invitedRoom: "你被邀请加入房间 {room}。",
+  joinTitle: "加入房间",
+  joinCopy: "输入你的名字加入这个房间。所有人进入后，由房主开始游戏。",
+  waitingStatus: "{count}/{max} 等待中",
+  nextLine: "现在：{current} | 下一位：{next}{swap}",
+  waitingNext: "下一位：等待开始",
+  finishedLine: "游戏结束",
+  swapText: " | 你从 {name} 得到了手牌",
+  swapNotice: "你从 {name} 得到了手牌。",
+  youWon: "你赢了！",
+  winnerTitle: "{name} 赢了！",
+  youWonText: "打得好。你已经出完所有手牌。",
+  winnerText: "游戏结束了。",
+  disconnectedWinText: "其他玩家已断开连接。",
+  cardCount: "{count} 张牌",
+  youSuffix: "（你）",
+  bot: "机器人",
+  connectedWord: "已连接",
+  offline: "离线",
+  watchingBots: "正在观看两个机器人对战。",
+  defaultPlayer: "玩家",
+  easyBotName: "简单机器人",
+  mediumBotName: "普通机器人",
+  hardBotName: "困难机器人",
+  tutorialBotName: "教程机器人",
+  helpJoker: "Joker：随时可以出。下一位必须叠 Joker，否则摸 5 张。",
+  helpTwo: "2：下一位必须摸 2 张，除非再叠一张 2。",
+  helpSeven: "7：结束回合前必须继续行动。",
+  helpKing: "K：结束回合前必须继续行动。",
+  helpEight: "8：跳过下一位。双人模式里必须像 7 一样继续行动。",
+  helpAce: "A：反转方向。双人模式里必须像 7 一样继续行动。",
+  helpTen: "10：所有人轮换手牌。",
+  helpJack: "J：为下一位选择花色。",
+  helpNormal: "没有特殊能力。匹配花色或点数后结束回合。",
 };
 
 const suitSymbols = {
@@ -529,8 +656,18 @@ codeJoinForm.addEventListener("submit", async (event) => {
   if (!code) return;
   localStorage.setItem("pesten-name", name);
   sessionId = crypto.randomUUID();
-  setRoomUrl(code, sessionId);
   try {
+    if (code === "BXB2") {
+      const result = await api("/api/create-bot-watch", {
+        name,
+        difficulty: botDifficulty.value,
+        sessionId,
+      });
+      setRoomUrl(result.code, sessionId);
+      enterRoom(result.code);
+      return;
+    }
+    setRoomUrl(code, sessionId);
     await api("/api/join", { name, code, sessionId });
     enterRoom(code);
   } catch (error) {
@@ -728,6 +865,7 @@ function applyLanguage() {
   startButton.textContent = t("startGame");
   homeRulesTitle.textContent = t("rulesTitle");
   homeRulesText.innerHTML = t("rulesText");
+  tutorialHomePanel.querySelector(".eyebrow").textContent = t("tutorialEyebrow");
   tutorialHomeTitle.textContent = t("tutorialHomeTitle");
   tutorialHomeCopy.textContent = t("tutorialHomeCopy");
   tutorialButton.textContent = t("tutorialBot");
@@ -779,7 +917,7 @@ function render() {
   roomScreen.classList.toggle("tutorial-room", Boolean(state.tutorialMode));
   roomCodeLabel.textContent = state.code;
   statusLabel.textContent = state.phase === "waiting" ? t("waitingStatus", { count: state.players.length, max: state.maxPlayers }) : phaseLabel(state.phase);
-  youLabel.textContent = me ? me.name : t("you");
+  youLabel.textContent = me ? displayName(me) : t("you");
   roomCodeLabel.closest("div").hidden = Boolean(state.botMode);
   sharePanel.hidden = Boolean(state.botMode) || !state.isHost || state.phase !== "waiting";
   shareLink.textContent = roomLink();
@@ -802,7 +940,7 @@ function render() {
       const presence = player.isBot ? t("bot") : player.connected ? t("connectedWord") : t("offline");
       const visibleHand = renderPlayerHandPreview(player);
       return `<article class="player${active}${offline}" data-player-id="${escapeHtml(player.id)}">
-        <strong>${escapeHtml(player.name)}${you}</strong>
+        <strong>${escapeHtml(displayName(player))}${you}</strong>
         <span>${t("cardCount", { count: player.handCount })}</span>
         <span class="presence">${presence}</span>
         ${visibleHand}
@@ -836,7 +974,9 @@ function render() {
       ? t("shareStart")
       : t("waitHost");
   } else if (state.phase === "finished") {
-    message.textContent = state.winner ? `${state.winner.name}${t("wonSuffix")}` : t("finished");
+    message.textContent = state.winner ? `${displayName(state.winner)}${t("wonSuffix")}` : t("finished");
+  } else if (state.spectatorMode) {
+    message.textContent = t("watchingBots");
   } else if (isTutorialTour) {
     message.textContent = t("tourNext");
   } else if (isMyTurn) {
@@ -853,7 +993,7 @@ function render() {
       message.textContent = t("yourTurn");
     }
   } else {
-    message.textContent = current ? t("currentTurn", { name: current.name }) : t("waiting");
+    message.textContent = current ? t("currentTurn", { name: displayName(current) }) : t("waiting");
   }
 
   const noticeText = state.notice ? noticeMessage(state.notice, me) : "";
@@ -913,6 +1053,19 @@ function renderPlayerHandPreview(player) {
   return `<div class="visible-bot-hand">${cards.join("")}</div>`;
 }
 
+function displayName(playerOrName) {
+  const name = typeof playerOrName === "string" ? playerOrName : playerOrName?.name;
+  if (name === "Player" || name === "Speler" || name === "Host") return t("defaultPlayer");
+  if (name === "Easy Bot") return t("easyBotName");
+  if (name === "Medium Bot") return t("mediumBotName");
+  if (name === "Hard Bot") return t("hardBotName");
+  if (/^Easy Bot \d+$/.test(name)) return `${t("easyBotName")} ${name.split(" ").at(-1)}`;
+  if (/^Medium Bot \d+$/.test(name)) return `${t("mediumBotName")} ${name.split(" ").at(-1)}`;
+  if (/^Hard Bot \d+$/.test(name)) return `${t("hardBotName")} ${name.split(" ").at(-1)}`;
+  if (name === "Tutorial Bot") return t("tutorialBotName");
+  return name || t("defaultPlayer");
+}
+
 function cardBackHtml(index = 0) {
   return `<span class="card-back tiny" style="--tilt: ${((index % 5) - 2) * 0.8}deg" aria-hidden="true"></span>`;
 }
@@ -923,16 +1076,16 @@ function noticeMessage(notice, me) {
   if (notice.count > 1) {
     return isYou
       ? t("mustDrawYouForced", { card, count: notice.count })
-      : t("mustDrawOtherForced", { name: notice.playerName, card, count: notice.count });
+      : t("mustDrawOtherForced", { name: displayName(notice.playerName), card, count: notice.count });
   }
-  return isYou ? t("mustDrawYou") : t("mustDrawOther", { name: notice.playerName });
+  return isYou ? t("mustDrawYou") : t("mustDrawOther", { name: displayName(notice.playerName) });
 }
 
 function eventMessage(nextState, me) {
   const event = nextState.lastEvent;
   if (!event) return "";
   const player = nextState.players.find((item) => item.id === (event.from || event.to || event.by));
-  const name = player?.isYou ? t("you") : player?.name || "Player";
+  const name = player?.isYou ? t("you") : displayName(player || "Player");
   if (event.type === "draw") {
     return event.forced
       ? t("eventForcedDrew", { name, count: event.count })
@@ -1079,15 +1232,15 @@ function cardHtml(card, extraClass) {
 }
 
 function cardHelp(card) {
-  if (card.rank === "Joker") return "Joker: can always be played. The next player must draw 5 unless they stack a Joker.";
-  if (card.rank === "2") return "2: the next player must draw 2 unless they stack another 2.";
-  if (card.rank === "7") return "7: play again before finishing your turn.";
-  if (card.rank === "K") return "King: play again before finishing your turn.";
-  if (card.rank === "8") return "8: skips the next player when you finish your turn.";
-  if (card.rank === "A") return "Ace: reverses the play direction.";
-  if (card.rank === "10") return "10: rotates everyone's hands.";
-  if (card.rank === "J") return "Jack: choose the suit for the next player.";
-  return "No special ability. Match by suit or rank, then finish your turn.";
+  if (card.rank === "Joker") return t("helpJoker");
+  if (card.rank === "2") return t("helpTwo");
+  if (card.rank === "7") return t("helpSeven");
+  if (card.rank === "K") return t("helpKing");
+  if (card.rank === "8") return t("helpEight");
+  if (card.rank === "A") return t("helpAce");
+  if (card.rank === "10") return t("helpTen");
+  if (card.rank === "J") return t("helpJack");
+  return t("helpNormal");
 }
 
 function animateStateChanges(previous, next) {
@@ -1095,7 +1248,7 @@ function animateStateChanges(previous, next) {
 
   if (previous.phase !== "playing" && next.phase === "playing") {
     const current = next.players.find((player) => player.id === next.currentPlayerId);
-    if (current) scheduleTurnOverlay(t("overlayTurn", { name: current.name }), 500);
+    if (current) scheduleTurnOverlay(t("overlayTurn", { name: displayName(current) }), 500);
   }
 
   if (previous.phase !== "playing" || next.phase !== "playing") return;
@@ -1109,7 +1262,7 @@ function animateStateChanges(previous, next) {
 
   if (previous.currentPlayerId !== next.currentPlayerId) {
     const current = next.players.find((player) => player.id === next.currentPlayerId);
-    if (current) scheduleTurnOverlay(t("overlayTurn", { name: current.name }), turnOverlayDelay(next));
+    if (current) scheduleTurnOverlay(t("overlayTurn", { name: displayName(current) }), turnOverlayDelay(next));
   }
 }
 
@@ -1334,7 +1487,7 @@ function renderWinScreen(nextState) {
   }
   const you = nextState.players.find((player) => player.isYou);
   const isYou = you?.id === nextState.winner.id;
-  winnerTitle.textContent = isYou ? t("youWon") : t("winnerTitle", { name: nextState.winner.name });
+  winnerTitle.textContent = isYou ? t("youWon") : t("winnerTitle", { name: displayName(nextState.winner) });
   winnerText.textContent = nextState.winnerReason === "disconnected"
     ? t("disconnectedWinText")
     : isYou
@@ -1362,9 +1515,10 @@ function snapshotState(value) {
 function turnLine(nextState, current) {
   if (nextState.phase === "waiting") return t("waitingNext");
   if (nextState.phase === "finished") return t("finishedLine");
-  const currentName = current?.name || "-";
-  const nextName = nextState.nextPlayerName || "-";
-  const swapText = nextState.viewerSwapFrom ? t("swapText", { name: nextState.viewerSwapFrom }) : "";
+  const currentName = current ? displayName(current) : "-";
+  const nextPlayer = nextState.players.find((player) => player.id === nextState.nextPlayerId);
+  const nextName = nextPlayer ? displayName(nextPlayer) : displayName(nextState.nextPlayerName || "-");
+  const swapText = nextState.viewerSwapFrom ? t("swapText", { name: displayName(nextState.viewerSwapFrom) }) : "";
   return t("nextLine", { current: currentName, next: nextName, swap: swapText });
 }
 

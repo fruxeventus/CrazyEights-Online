@@ -58,8 +58,8 @@ async function handleApi(req, res) {
     const code = cleanCode(url.searchParams.get("code"));
     const sessionId = url.searchParams.get("sessionId");
     const room = getRoom(code);
-    const player = touchPlayer(room, sessionId);
-    if (!player) throw new PublicError("Vul je naam in om mee te doen.");
+    const viewer = touchViewer(room, sessionId);
+    if (!viewer) throw new PublicError("Vul je naam in om mee te doen.");
     sendJson(res, 200, publicState(room, sessionId));
     return;
   }
@@ -151,6 +151,51 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (req.url === "/api/create-bot-watch") {
+    const code = makeCode();
+    const difficulty = cleanBotDifficulty(body.difficulty);
+    const spectator = makeSpectator(body.sessionId, body.name);
+    const botOne = makePlayer(`bot-${code}-1`, `${botName(difficulty)} 1`, false, true);
+    const botTwo = makePlayer(`bot-${code}-2`, `${botName(difficulty)} 2`, false, true);
+    const room = {
+      code,
+      maxPlayers: 2,
+      hostId: spectator.id,
+      players: [botOne, botTwo],
+      spectators: [spectator],
+      phase: "waiting",
+      deck: [],
+      discard: [],
+      current: 0,
+      direction: 1,
+      chosenSuit: null,
+      pendingDraw: 0,
+      pendingDrawRank: null,
+      freePlayPlayerId: null,
+      winnerId: null,
+      botMode: true,
+      spectatorMode: true,
+      tutorialMode: false,
+      botDifficulty: difficulty,
+      notice: null,
+      mustDrawPlayerId: null,
+      mustDrawSince: null,
+      resolvingForcedDraw: false,
+      turnHistory: [],
+      normalDrawPlayerId: null,
+      normalDrawCount: 0,
+      winnerReason: null,
+      chat: [],
+      lastEvent: null,
+      eventId: 0,
+      createdAt: Date.now(),
+    };
+    rooms.set(code, room);
+    startGame(room);
+    sendJson(res, 200, { code });
+    return;
+  }
+
   if (req.url === "/api/create-tutorial") {
     const code = makeCode();
     const player = makePlayer(body.sessionId, body.name, true);
@@ -214,6 +259,14 @@ async function handleApi(req, res) {
     const code = cleanCode(body.code);
     const room = getRoom(code);
     const player = room.players.find((item) => item.id === body.sessionId);
+    const spectator = room.spectators?.find((item) => item.id === body.sessionId);
+    if (!player && spectator && body.type === "botTurn") {
+      spectator.connectedAt = Date.now();
+      playBotTurn(room);
+      validateCards(room);
+      sendJson(res, 200, publicState(room, spectator.id));
+      return;
+    }
     if (!player) throw new PublicError("Je zit niet in deze kamer.");
     player.connectedAt = Date.now();
     handleAction(room, player, body);
@@ -343,7 +396,7 @@ function playBotTurn(room) {
     drawForTurn(room, bot, false);
     if (!hadPendingDraw && room.phase === "playing" && room.players[room.current]?.id === bot.id) {
       if (canDrawNow(room, bot)) drawForTurn(room, bot, false);
-      if (!needsSecondFollowUpDraw(room, bot)) finishTurn(room, bot);
+      if (!needsFollowUpAction(room, bot)) finishTurn(room, bot);
     }
     return;
   }
@@ -366,7 +419,7 @@ function playBotTurn(room) {
     return;
   }
 
-  finishTurn(room, bot);
+  if (!needsFollowUpAction(room, bot)) finishTurn(room, bot);
   updateMustDraw(room);
 }
 
@@ -540,12 +593,12 @@ function advanceTurn(room) {
 
 function finishTurn(room, player) {
   if (room.mustDrawPlayerId === player.id) throw new PublicError("Je moet eerst een kaart pakken.");
-  if (needsSecondFollowUpDraw(room, player)) throw new PublicError("Je moet nog een kaart pakken.");
+  if (needsFollowUpAction(room, player)) throw new PublicError("Je moet eerst je vervolgactie doen.");
   const current = room.players[room.current];
   if (!current || current.id !== player.id) throw new PublicError("Je bent niet aan de beurt.");
   const top = room.discard[room.discard.length - 1];
   advanceTurn(room);
-  if (top?.rank === "8" && room.phase === "playing") advanceTurn(room);
+  if (top?.rank === "8" && room.players.length > 2 && room.phase === "playing") advanceTurn(room);
   updateMustDraw(room);
 }
 
@@ -565,8 +618,7 @@ function canPlayAnotherCard(room, player) {
   if (room.freePlayPlayerId === player.id) return true;
   const top = room.discard[room.discard.length - 1];
   if (!top) return true;
-  if (goAgainRanks.has(top.rank)) return true;
-  return (top.rank === "8" || top.rank === "A") && room.players.length === 2;
+  return isFollowUpCard(room, top);
 }
 
 function canDrawNow(room, player) {
@@ -586,9 +638,23 @@ function lastCardPlayedThisTurn(room, player) {
 
 function needsSecondFollowUpDraw(room, player) {
   const top = lastCardPlayedThisTurn(room, player);
-  if (!top || !goAgainRanks.has(top.rank)) return false;
+  if (!top || !isFollowUpCard(room, top)) return false;
   if (room.normalDrawPlayerId !== player.id || room.normalDrawCount !== 1) return false;
   return !player.hand.some((card) => isPlayable(room, card, player));
+}
+
+function needsFollowUpAction(room, player) {
+  const top = lastCardPlayedThisTurn(room, player);
+  if (!top || !isFollowUpCard(room, top)) return false;
+  if (player.hand.some((card) => isPlayable(room, card, player))) return true;
+  if (room.normalDrawPlayerId !== player.id) return true;
+  return needsSecondFollowUpDraw(room, player);
+}
+
+function isFollowUpCard(room, card) {
+  if (!card) return false;
+  if (goAgainRanks.has(card.rank)) return true;
+  return room.players.length === 2 && (card.rank === "8" || card.rank === "A");
 }
 
 function snapshotTurnState(room) {
@@ -703,6 +769,7 @@ function publicState(room, sessionId) {
   validateCards(room);
   const now = Date.now();
   const me = room.players.find((player) => player.id === sessionId);
+  const spectator = room.spectators?.find((item) => item.id === sessionId) || null;
   const hand = me ? [...me.hand].sort(sortCards) : [];
   const notice = room.notice && room.notice.until > Date.now()
     ? {
@@ -731,9 +798,10 @@ function publicState(room, sessionId) {
     maxPlayers: room.maxPlayers,
     phase: room.phase,
     botMode: Boolean(room.botMode),
+    spectatorMode: Boolean(room.spectatorMode),
     tutorialMode: Boolean(room.tutorialMode),
     botDifficulty: room.botDifficulty,
-    isHost: room.hostId === sessionId,
+    isHost: room.hostId === sessionId && Boolean(me),
     canUseHostTools: canUseHostTools(room, me),
     currentPlayerId: room.phase === "tutorial" ? null : room.players[room.current]?.id || null,
     deckCount: room.deck.length,
@@ -753,7 +821,7 @@ function publicState(room, sessionId) {
     winner: room.winnerId ? room.players.find((player) => player.id === room.winnerId) : null,
     availableCards: canUseHostTools(room, me) ? [...room.deck].sort(sortCards) : [],
     canUndo: Boolean(isCurrentViewer && room.turnHistory.some((entry) => entry.playerId === sessionId)),
-    canFinishTurn: Boolean(isCurrentViewer && room.mustDrawPlayerId !== sessionId && me && !needsSecondFollowUpDraw(room, me)),
+    canFinishTurn: Boolean(isCurrentViewer && room.mustDrawPlayerId !== sessionId && me && !needsFollowUpAction(room, me)),
     canDraw: Boolean(me && canDrawNow(room, me)),
     players: room.players.map((player) => ({
       id: player.id,
@@ -764,6 +832,7 @@ function publicState(room, sessionId) {
       connected: player.isBot || now - player.connectedAt < disconnectedAfterMs,
       hand: room.tutorialMode && player.isBot ? [...player.hand].sort(sortCards) : undefined,
     })),
+    viewer: spectator ? { id: spectator.id, name: spectator.name, spectator: true } : null,
     hand,
     playableCardIds: hand.filter((card) => canViewerPlayAnother && isPlayable(room, card, me)).map((card) => card.id),
   };
@@ -903,16 +972,27 @@ function makePlayer(sessionId, name, host, isBot = false) {
   };
 }
 
+function makeSpectator(sessionId, name) {
+  return {
+    id: sessionId || cryptoId(),
+    name: cleanName(name || "Speler"),
+    connectedAt: Date.now(),
+    spectator: true,
+  };
+}
+
 function getRoom(code) {
   const room = rooms.get(code);
   if (!room) throw new PublicError("Kamer niet gevonden.");
   return room;
 }
 
-function touchPlayer(room, sessionId) {
+function touchViewer(room, sessionId) {
   const player = room.players.find((item) => item.id === sessionId);
   if (player) player.connectedAt = Date.now();
-  return player;
+  const spectator = room.spectators?.find((item) => item.id === sessionId);
+  if (spectator) spectator.connectedAt = Date.now();
+  return player || spectator;
 }
 
 function makeCode() {
