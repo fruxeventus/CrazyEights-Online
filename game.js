@@ -2,6 +2,10 @@ const $ = (selector) => document.querySelector(selector);
 
 const homeScreen = $("#homeScreen");
 const roomScreen = $("#roomScreen");
+const appTitle = $("#appTitle");
+const appSubtitle = $("#appSubtitle");
+const languageSelect = $("#languageSelect");
+const languageLabel = $("#languageLabel");
 const heroTitle = $(".hero h2");
 const heroCopy = $(".hero p");
 const createForm = $("#createForm");
@@ -44,6 +48,10 @@ const chatPanel = $("#chatPanel");
 const chatMessages = $("#chatMessages");
 const chatForm = $("#chatForm");
 const chatInput = $("#chatInput");
+const homeRulesTitle = $("#homeRulesTitle");
+const homeRulesText = $("#homeRulesText");
+const roomRulesTitle = $(".rules summary");
+const roomRulesText = $(".rules p");
 
 let sessionId = localStorage.getItem("pesten-session") || crypto.randomUUID();
 localStorage.setItem("pesten-session", sessionId);
@@ -62,6 +70,269 @@ let dismissedWinKey = "";
 let pendingJackCardId = null;
 let botTurnInFlight = false;
 let lastBotTurnKey = "";
+let language = localStorage.getItem("crazy-eights-language") || "en";
+
+const translations = {
+  en: {
+    appTitle: "Crazy Eights Multiplayer",
+    appSubtitle: "Local online cards with friends",
+    language: "Language",
+    connectedNone: "Not connected",
+    notInRoom: "Not in room",
+    connected: "Connected",
+    homeTitle: "Create a room and share the link",
+    homeCopy: "Choose how many players can join, create a room, and send the link to your friends. They only enter their name.",
+    play: "Play",
+    yourName: "Your name",
+    playerPlaceholder: "Player",
+    maxPlayers: "Maximum players",
+    players: "players",
+    createRoom: "Create room",
+    botLevel: "Bot level",
+    easy: "Easy",
+    medium: "Medium",
+    hard: "Hard",
+    playBot: "Play against bot",
+    joinCodeTitle: "Join with code",
+    joinCodeCopy: "Use the name above and type your friend's room code.",
+    roomCode: "Room code",
+    joinCode: "Join with code",
+    join: "Join",
+    invited: "You were invited to a Crazy Eights game.",
+    room: "Room",
+    status: "Status",
+    waiting: "Waiting",
+    back: "Back",
+    shareLink: "Share this link",
+    copyLink: "Copy link",
+    copied: "Copied",
+    selectLink: "Select link",
+    waitingPlayers: "Waiting for players.",
+    next: "Next",
+    yourHand: "Your hand",
+    you: "You",
+    hostWin: "Test host wins",
+    giveCard: "Give card",
+    startGame: "Start game",
+    rulesTitle: "Rules for new players",
+    rulesText: "Your goal is to get rid of all your cards. On your turn, play a card with the same suit or rank as the top card, or draw from the deck if you cannot play. Special cards can change the turn, make someone draw cards, or swap hands.",
+    rulesRoomTitle: "Rules in this version",
+    rulesRoomText: "Play the same suit or rank as the top card. Joker can always be played. Jack lets you choose a suit. Ace reverses direction. 2 makes the next player draw two cards and can stack. Jokers stack by five cards. 7 and King give you another turn. 8 skips the next player. 10 rotates all hands.",
+    chat: "Chat",
+    messages: "Messages",
+    chatPlaceholder: "Type a message",
+    send: "Send",
+    endGame: "Game over",
+    won: "Won",
+    winnerKnown: "The winner is known.",
+    viewTable: "View table",
+    chooseSuit: "Choose a suit",
+    hearts: "Hearts",
+    diamonds: "Diamonds",
+    clubs: "Clubs",
+    spades: "Spades",
+    chooseCard: "Choose a card",
+    pickerCopy: "Only cards still in the draw pile.",
+    close: "Close",
+    phaseWaiting: "Waiting",
+    phasePlaying: "Playing",
+    phaseFinished: "Finished",
+    shareStart: "Share the link. You can start when at least 2 players have joined.",
+    waitHost: "Waiting for the host to start the game.",
+    finished: "Game over.",
+    wonSuffix: " won.",
+    yourTurn: "It is your turn. Play a card or draw.",
+    yourStackTurn: "It is your turn. Play a {card}.",
+    autoDraw: "You cannot play a {card}. The game will draw {count} cards soon.",
+    cannotPlay: "You cannot play. Draw a card.",
+    currentTurn: "{name}'s turn.",
+    overlayTurn: "{name}'s turn",
+    invitedRoom: "You were invited to room {room}.",
+    joinTitle: "Join a room",
+    joinCopy: "Enter your name to join this room. The host starts the game when everyone is in.",
+    waitingStatus: "{count}/{max} waiting",
+    nextLine: "Now: {current} | Next: {next}{swap}",
+    waitingNext: "Next: waiting for start",
+    finishedLine: "Game over",
+    swapText: " | You got cards from {name}",
+    swapNotice: "You got cards from {name}.",
+    youWon: "You won!",
+    winnerTitle: "{name} won!",
+    youWonText: "Nice game. You got rid of all your cards.",
+    winnerText: "The game is over.",
+  },
+};
+
+translations.nl = {
+  ...translations.en,
+  appTitle: "Pesten Multiplayer",
+  appSubtitle: "Lokaal online kaarten met vrienden",
+  language: "Taal",
+  connectedNone: "Niet verbonden",
+  notInRoom: "Niet in kamer",
+  connected: "Verbonden",
+  homeTitle: "Maak een kamer en deel de link",
+  homeCopy: "Kies hoeveel spelers mee mogen doen, maak een kamer en stuur de link naar je vrienden. Zij vullen alleen hun naam in.",
+  play: "Spelen",
+  yourName: "Jouw naam",
+  playerPlaceholder: "Speler",
+  maxPlayers: "Maximaal aantal spelers",
+  players: "spelers",
+  createRoom: "Maak kamer",
+  botLevel: "Bot niveau",
+  easy: "Makkelijk",
+  medium: "Gemiddeld",
+  hard: "Moeilijk",
+  playBot: "Speel tegen bot",
+  joinCodeTitle: "Meedoen met code",
+  joinCodeCopy: "Gebruik de naam hierboven en typ de kamercode van je vriend.",
+  roomCode: "Kamercode",
+  joinCode: "Doe mee met code",
+  join: "Doe mee",
+  invited: "Je bent uitgenodigd voor een potje Pesten.",
+  room: "Kamer",
+  status: "Status",
+  waiting: "Wachten",
+  back: "Terug",
+  shareLink: "Deel deze link",
+  copyLink: "Kopieer link",
+  copied: "Gekopieerd",
+  selectLink: "Selecteer link",
+  waitingPlayers: "Wachten op spelers.",
+  next: "Volgende",
+  yourHand: "Jouw hand",
+  you: "Jij",
+  hostWin: "Test host wint",
+  giveCard: "Geef kaart",
+  startGame: "Start spel",
+  rulesTitle: "Regels voor nieuwe spelers",
+  rulesText: "Je doel is om al je kaarten kwijt te raken. Als je aan de beurt bent, leg je een kaart met dezelfde soort of waarde als de bovenste kaart, of pak je een kaart als je niet kunt. Speciale kaarten kunnen de beurt veranderen, iemand kaarten laten pakken of handen wisselen.",
+  rulesRoomTitle: "Regels in deze versie",
+  rulesRoomText: "Leg dezelfde soort of waarde op. Joker mag altijd. Boer laat je een soort kiezen. Aas draait de richting om. 2 laat de volgende speler twee kaarten pakken en kan stapelen. Jokers stapelen per vijf kaarten. 7 en Heer geven nog een beurt. 8 slaat de volgende speler over. 10 wisselt alle handen door.",
+  messages: "Berichten",
+  chatPlaceholder: "Typ een bericht",
+  send: "Stuur",
+  endGame: "Einde spel",
+  winnerKnown: "De winnaar is bekend.",
+  viewTable: "Bekijk tafel",
+  chooseSuit: "Kies een soort",
+  hearts: "Harten",
+  diamonds: "Ruiten",
+  clubs: "Klaveren",
+  spades: "Schoppen",
+  chooseCard: "Kies een kaart",
+  pickerCopy: "Alleen kaarten die nog in de trekstapel zitten.",
+  close: "Sluiten",
+  phasePlaying: "Bezig",
+  phaseFinished: "Afgelopen",
+  shareStart: "Deel de link. Je kunt starten zodra er minstens 2 spelers zijn.",
+  waitHost: "Wachten tot de host het spel start.",
+  finished: "Spel afgelopen.",
+  wonSuffix: " heeft gewonnen.",
+  yourTurn: "Jij bent aan de beurt. Leg een kaart of pak.",
+  yourStackTurn: "Jij bent aan de beurt. Leg een {card}.",
+  autoDraw: "Je kan geen {card} leggen. Het spel pakt zo {count} kaarten.",
+  cannotPlay: "Je kan niet. Pak een kaart.",
+  currentTurn: "{name} is aan de beurt.",
+  overlayTurn: "{name} is aan de beurt",
+  invitedRoom: "Je bent uitgenodigd voor kamer {room}.",
+  joinTitle: "Meedoen met een kamer",
+  joinCopy: "Vul je naam in om met deze kamer mee te doen. De host start het spel zodra iedereen binnen is.",
+  waitingStatus: "{count}/{max} wachten",
+  nextLine: "Nu: {current} | Volgende: {next}{swap}",
+  waitingNext: "Volgende: wacht op start",
+  finishedLine: "Spel afgelopen",
+  swapText: " | Jij kreeg kaarten van {name}",
+  swapNotice: "Jij kreeg kaarten van {name}.",
+  youWon: "Jij hebt gewonnen!",
+  winnerTitle: "{name} heeft gewonnen!",
+  youWonText: "Lekker gespeeld. Je bent al je kaarten kwijt.",
+  winnerText: "Het spel is afgelopen.",
+};
+
+translations.fr = {
+  ...translations.en,
+  appTitle: "Crazy Eights multijoueur",
+  appSubtitle: "Cartes en ligne local avec des amis",
+  language: "Langue",
+  connectedNone: "Non connecte",
+  connected: "Connecte",
+  homeTitle: "Creez une partie et partagez le lien",
+  play: "Jouer",
+  yourName: "Votre nom",
+  maxPlayers: "Nombre maximum de joueurs",
+  createRoom: "Creer une partie",
+  botLevel: "Niveau du bot",
+  easy: "Facile",
+  medium: "Moyen",
+  hard: "Difficile",
+  playBot: "Jouer contre le bot",
+  joinCodeTitle: "Rejoindre avec un code",
+  joinCode: "Rejoindre avec le code",
+  back: "Retour",
+  copyLink: "Copier le lien",
+  rulesTitle: "Regles pour debutants",
+  rulesRoomTitle: "Regles de cette version",
+  chat: "Chat",
+  messages: "Messages",
+  send: "Envoyer",
+};
+
+translations.de = {
+  ...translations.en,
+  appTitle: "Crazy Eights Mehrspieler",
+  appSubtitle: "Lokales Online-Kartenspiel mit Freunden",
+  language: "Sprache",
+  connectedNone: "Nicht verbunden",
+  connected: "Verbunden",
+  homeTitle: "Raum erstellen und Link teilen",
+  play: "Spielen",
+  yourName: "Dein Name",
+  maxPlayers: "Maximale Spielerzahl",
+  createRoom: "Raum erstellen",
+  botLevel: "Bot-Stufe",
+  easy: "Leicht",
+  medium: "Mittel",
+  hard: "Schwer",
+  playBot: "Gegen Bot spielen",
+  joinCodeTitle: "Mit Code beitreten",
+  joinCode: "Mit Code beitreten",
+  back: "Zuruck",
+  copyLink: "Link kopieren",
+  rulesTitle: "Regeln fur neue Spieler",
+  rulesRoomTitle: "Regeln in dieser Version",
+  chat: "Chat",
+  messages: "Nachrichten",
+  send: "Senden",
+};
+
+translations.zh = {
+  ...translations.en,
+  appTitle: "疯狂八点多人版",
+  appSubtitle: "和朋友一起本地联机打牌",
+  language: "语言",
+  connectedNone: "未连接",
+  connected: "已连接",
+  homeTitle: "创建房间并分享链接",
+  play: "开始",
+  yourName: "你的名字",
+  maxPlayers: "最多玩家",
+  createRoom: "创建房间",
+  botLevel: "机器人难度",
+  easy: "简单",
+  medium: "普通",
+  hard: "困难",
+  playBot: "对战机器人",
+  joinCodeTitle: "用代码加入",
+  joinCode: "加入房间",
+  back: "返回",
+  copyLink: "复制链接",
+  rulesTitle: "新手规则",
+  rulesRoomTitle: "本版本规则",
+  chat: "聊天",
+  messages: "消息",
+  send: "发送",
+};
 
 const suitSymbols = {
   hearts: "♥",
@@ -79,6 +350,17 @@ const suitNames = {
 
 suitSymbols.joker = "*";
 suitNames.joker = "Joker";
+
+languageSelect.value = translations[language] ? language : "en";
+language = languageSelect.value;
+applyLanguage();
+
+languageSelect.addEventListener("change", () => {
+  language = languageSelect.value;
+  localStorage.setItem("crazy-eights-language", language);
+  applyLanguage();
+  render();
+});
 
 createName.value = localStorage.getItem("pesten-name") || "";
 joinName.value = localStorage.getItem("pesten-name") || "";
@@ -179,12 +461,12 @@ copyLinkButton.addEventListener("click", async () => {
   const link = roomLink();
   try {
     await navigator.clipboard.writeText(link);
-    copyLinkButton.textContent = "Gekopieerd";
+    copyLinkButton.textContent = t("copied");
   } catch {
-    copyLinkButton.textContent = "Selecteer link";
+    copyLinkButton.textContent = t("selectLink");
   }
   setTimeout(() => {
-    copyLinkButton.textContent = "Kopieer link";
+    copyLinkButton.textContent = t("copyLink");
   }, 1400);
 });
 
@@ -206,12 +488,12 @@ function enterRoom(code) {
 async function poll() {
   clearTimeout(pollTimer);
   if (!room) {
-    connection.textContent = "Niet verbonden";
+    connection.textContent = t("connectedNone");
     render();
     return;
   }
   if (!getPlayerFromUrl()) {
-    connection.textContent = "Niet in kamer";
+    connection.textContent = t("notInRoom");
     renderJoin();
     pollTimer = setTimeout(poll, 900);
     return;
@@ -219,10 +501,10 @@ async function poll() {
 
   try {
     state = await api(`/api/state?code=${encodeURIComponent(room)}&sessionId=${encodeURIComponent(sessionId)}`);
-    connection.textContent = "Verbonden";
+    connection.textContent = t("connected");
     render();
   } catch (error) {
-    connection.textContent = "Niet in kamer";
+    connection.textContent = t("notInRoom");
     state = null;
     renderJoin(error.message);
   } finally {
@@ -254,6 +536,88 @@ async function api(path, body) {
   return data;
 }
 
+function t(key, replacements = {}) {
+  const text = translations[language]?.[key] ?? translations.en[key] ?? key;
+  return Object.entries(replacements).reduce(
+    (value, [name, replacement]) => value.replaceAll(`{${name}}`, replacement),
+    text
+  );
+}
+
+function applyLanguage() {
+  document.documentElement.lang = language;
+  document.title = t("appTitle");
+  appTitle.textContent = t("appTitle");
+  appSubtitle.textContent = t("appSubtitle");
+  languageLabel.textContent = t("language");
+  heroTitle.textContent = t("homeTitle");
+  heroCopy.textContent = t("homeCopy");
+
+  createForm.querySelector("h3").textContent = t("play");
+  setLabelText(createName, t("yourName"));
+  createName.placeholder = t("playerPlaceholder");
+  setLabelText(playerCount, t("maxPlayers"));
+  [...playerCount.options].forEach((option) => {
+    option.textContent = `${option.value} ${t("players")}`;
+  });
+  createForm.querySelector('button[type="submit"]').textContent = t("createRoom");
+  setLabelText(botDifficulty, t("botLevel"));
+  botDifficulty.options[0].textContent = t("easy");
+  botDifficulty.options[1].textContent = t("medium");
+  botDifficulty.options[2].textContent = t("hard");
+  botButton.textContent = t("playBot");
+
+  codeJoinForm.querySelector("h3").textContent = t("joinCodeTitle");
+  codeJoinForm.querySelector(".panel-copy").textContent = t("joinCodeCopy");
+  setLabelText(roomCodeInput, t("roomCode"));
+  codeJoinForm.querySelector("button").textContent = t("joinCode");
+
+  joinForm.querySelector("h3").textContent = t("join");
+  setLabelText(joinName, t("yourName"));
+  joinName.placeholder = t("playerPlaceholder");
+  joinForm.querySelector("button").textContent = t("join");
+
+  roomScreen.querySelector(".room-head .eyebrow").textContent = t("room");
+  roomScreen.querySelectorAll(".room-head .eyebrow")[1].textContent = t("status");
+  leaveButton.textContent = t("back");
+  sharePanel.querySelector(".eyebrow").textContent = t("shareLink");
+  copyLinkButton.textContent = t("copyLink");
+  drawButton.title = t("chooseCard");
+  message.textContent = t("waitingPlayers");
+  document.querySelector(".hand-head .eyebrow").textContent = t("yourHand");
+  youLabel.textContent = t("you");
+  hostWinButton.textContent = t("hostWin");
+  giveCardButton.textContent = t("giveCard");
+  startButton.textContent = t("startGame");
+  homeRulesTitle.textContent = t("rulesTitle");
+  homeRulesText.textContent = t("rulesText");
+  roomRulesTitle.textContent = t("rulesRoomTitle");
+  roomRulesText.textContent = t("rulesRoomText");
+  chatPanel.querySelector(".eyebrow").textContent = t("chat");
+  chatPanel.querySelector("strong").textContent = t("messages");
+  chatInput.placeholder = t("chatPlaceholder");
+  chatForm.querySelector("button").textContent = t("send");
+  document.querySelector(".win-card .eyebrow").textContent = t("endGame");
+  winnerTitle.textContent = t("won");
+  winnerText.textContent = t("winnerKnown");
+  closeWinButton.textContent = t("viewTable");
+  suitDialog.querySelector("h3").textContent = t("chooseSuit");
+  suitDialog.querySelectorAll("button")[0].textContent = `${suitSymbols.hearts} ${t("hearts")}`;
+  suitDialog.querySelectorAll("button")[1].textContent = `${suitSymbols.diamonds} ${t("diamonds")}`;
+  suitDialog.querySelectorAll("button")[2].textContent = `${suitSymbols.clubs} ${t("clubs")}`;
+  suitDialog.querySelectorAll("button")[3].textContent = `${suitSymbols.spades} ${t("spades")}`;
+  cardPickerDialog.querySelector("h3").textContent = t("chooseCard");
+  cardPickerDialog.querySelector(".dialog-copy").textContent = t("pickerCopy");
+  closeCardPickerButton.textContent = t("close");
+}
+
+function setLabelText(control, text) {
+  const label = control.closest("label");
+  if (!label) return;
+  const node = [...label.childNodes].find((child) => child.nodeType === Node.TEXT_NODE);
+  if (node) node.textContent = `\n              ${text}\n              `;
+}
+
 function render() {
   const inRoom = Boolean(room && state);
   homeScreen.classList.toggle("hidden", inRoom);
@@ -272,8 +636,8 @@ function render() {
 
   roomScreen.classList.toggle("bot-room", Boolean(state.botMode));
   roomCodeLabel.textContent = state.code;
-  statusLabel.textContent = state.phase === "waiting" ? `${state.players.length}/${state.maxPlayers} wachten` : phaseLabel(state.phase);
-  youLabel.textContent = me ? me.name : "Toeschouwer";
+  statusLabel.textContent = state.phase === "waiting" ? t("waitingStatus", { count: state.players.length, max: state.maxPlayers }) : phaseLabel(state.phase);
+  youLabel.textContent = me ? me.name : t("you");
   roomCodeLabel.closest("div").hidden = Boolean(state.botMode);
   sharePanel.hidden = Boolean(state.botMode) || !state.isHost || state.phase !== "waiting";
   shareLink.textContent = roomLink();
@@ -322,21 +686,21 @@ function render() {
 
   if (state.phase === "waiting") {
     message.textContent = state.isHost
-      ? "Deel de link. Je kunt starten zodra er minstens 2 spelers zijn."
-      : "Wachten tot de host het spel start.";
+      ? t("shareStart")
+      : t("waitHost");
   } else if (state.phase === "finished") {
-    message.textContent = state.winner ? `${state.winner.name} heeft gewonnen.` : "Spel afgelopen.";
+    message.textContent = state.winner ? `${state.winner.name}${t("wonSuffix")}` : t("finished");
   } else if (isMyTurn) {
     const stackCard = state.pendingDrawRank === "Joker" ? "joker" : "2";
     message.textContent = state.pendingDraw > 0
       ? mustDraw
-        ? `Je kan geen ${stackCard} leggen. Het spel pakt zo ${state.pendingDraw} kaarten.`
-        : `Jij bent aan de beurt. Leg een ${stackCard}.`
+        ? t("autoDraw", { card: stackCard, count: state.pendingDraw })
+        : t("yourStackTurn", { card: stackCard })
       : mustDraw || cannotPlay
-        ? "Je kan niet. Pak een kaart."
-        : "Jij bent aan de beurt. Leg een kaart of pak.";
+        ? t("cannotPlay")
+        : t("yourTurn");
   } else {
-    message.textContent = current ? `${current.name} is aan de beurt.` : "Wachten.";
+    message.textContent = current ? t("currentTurn", { name: current.name }) : t("waiting");
   }
 
   if (state.notice) message.textContent = state.notice.text;
@@ -350,8 +714,8 @@ function render() {
 function renderJoin(errorText = "") {
   homeScreen.classList.remove("hidden");
   roomScreen.classList.add("hidden");
-  heroTitle.textContent = "Meedoen met een kamer";
-  heroCopy.textContent = "Vul je naam in om met deze kamer mee te doen. De host start het spel zodra iedereen binnen is.";
+  heroTitle.textContent = t("joinTitle");
+  heroCopy.textContent = t("joinCopy");
   createForm.classList.add("hidden");
   codeJoinForm.classList.add("hidden");
   joinForm.classList.remove("hidden");
@@ -361,12 +725,12 @@ function renderJoin(errorText = "") {
   }
   joinForm.querySelector(".panel-copy").textContent = errorText && errorText !== "Kamer niet gevonden."
     ? errorText
-    : `Je bent uitgenodigd voor kamer ${room}.`;
+    : t("invitedRoom", { room });
 }
 
 function renderCreateHome() {
-  heroTitle.textContent = "Maak een kamer en deel de link";
-  heroCopy.textContent = "Kies hoeveel spelers mee mogen doen, maak een kamer en stuur de link naar je vrienden. Zij vullen alleen hun naam in.";
+  heroTitle.textContent = t("homeTitle");
+  heroCopy.textContent = t("homeCopy");
   createForm.classList.remove("hidden");
   codeJoinForm.classList.remove("hidden");
 }
@@ -415,7 +779,7 @@ function scheduleBotTurn(nextState) {
 }
 
 function botThinkDelay() {
-  return 2000 + Math.floor(Math.random() * 6001);
+  return 3000 + Math.floor(Math.random() * 3001);
 }
 
 function openCardPicker() {
@@ -457,7 +821,7 @@ function animateStateChanges(previous, next) {
 
   if (previous.phase !== "playing" && next.phase === "playing") {
     const current = next.players.find((player) => player.id === next.currentPlayerId);
-    if (current) scheduleTurnOverlay(`${current.name} is aan de beurt`, 500);
+    if (current) scheduleTurnOverlay(t("overlayTurn", { name: current.name }), 500);
   }
 
   if (previous.phase !== "playing" || next.phase !== "playing") return;
@@ -471,7 +835,7 @@ function animateStateChanges(previous, next) {
 
   if (previous.currentPlayerId !== next.currentPlayerId) {
     const current = next.players.find((player) => player.id === next.currentPlayerId);
-    if (current) scheduleTurnOverlay(`${current.name} is aan de beurt`, turnOverlayDelay(next));
+    if (current) scheduleTurnOverlay(t("overlayTurn", { name: current.name }), turnOverlayDelay(next));
   }
 }
 
@@ -489,8 +853,13 @@ function handleRoomEvent(next) {
     animateDraw(event.count, { force: event.forced, cardIds: event.cardIds || [] });
   }
 
-  if (event.type === "swap") {
-    const swap = event.mapping.find((item) => item.to === me.id);
+  if (event.type === "play" && event.from !== me.id) {
+    animatePlayFromPlayer(event.from, event.card);
+  }
+
+  const swapMapping = event.type === "swap" ? event.mapping : event.swapMapping;
+  if (swapMapping) {
+    const swap = swapMapping.find((item) => item.to === me.id);
     if (!swap) return;
     const source = next.players.find((player) => player.id === swap.from);
     if (source) showSwapSource(source.name);
@@ -502,6 +871,19 @@ function animatePlay(cardEl) {
   const from = safeRect(cardEl, hand.getBoundingClientRect());
   const to = safeRect(discard, document.querySelector(".center-table")?.getBoundingClientRect() || from);
   flyCard(from, to, cardEl.cloneNode(true), "card-flight");
+}
+
+function animatePlayFromPlayer(playerId, card) {
+  const playerEl = document.querySelector(`[data-player-id="${CSS.escape(playerId)}"]`);
+  const from = safeRect(playerEl, opponents.getBoundingClientRect());
+  const to = safeRect(discard, document.querySelector(".center-table")?.getBoundingClientRect() || from);
+  flyCard(from, to, cardElement(card), "card-flight", 520);
+}
+
+function cardElement(card) {
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = cardHtml(card, "small");
+  return wrapper.firstElementChild;
 }
 
 function animateDraw(count = 1, options = {}) {
@@ -643,8 +1025,8 @@ function renderWinScreen(nextState) {
   }
   const you = nextState.players.find((player) => player.isYou);
   const isYou = you?.id === nextState.winner.id;
-  winnerTitle.textContent = isYou ? "Jij hebt gewonnen!" : `${nextState.winner.name} heeft gewonnen!`;
-  winnerText.textContent = isYou ? "Lekker gespeeld. Je bent al je kaarten kwijt." : "Het spel is afgelopen.";
+  winnerTitle.textContent = isYou ? t("youWon") : t("winnerTitle", { name: nextState.winner.name });
+  winnerText.textContent = isYou ? t("youWonText") : t("winnerText");
   winScreen.classList.remove("hidden");
 }
 
@@ -665,16 +1047,16 @@ function snapshotState(value) {
 }
 
 function turnLine(nextState, current) {
-  if (nextState.phase === "waiting") return "Volgende: wacht op start";
-  if (nextState.phase === "finished") return "Spel afgelopen";
+  if (nextState.phase === "waiting") return t("waitingNext");
+  if (nextState.phase === "finished") return t("finishedLine");
   const currentName = current?.name || "-";
   const nextName = nextState.nextPlayerName || "-";
-  const swapText = nextState.viewerSwapFrom ? ` | Jij kreeg kaarten van ${nextState.viewerSwapFrom}` : "";
-  return `Nu: ${currentName} | Volgende: ${nextName}${swapText}`;
+  const swapText = nextState.viewerSwapFrom ? t("swapText", { name: nextState.viewerSwapFrom }) : "";
+  return t("nextLine", { current: currentName, next: nextName, swap: swapText });
 }
 
 function showSwapSource(name) {
-  message.textContent = `Jij kreeg kaarten van ${name}.`;
+  message.textContent = t("swapNotice", { name });
 }
 
 function showTurnOverlay(text) {
@@ -734,13 +1116,14 @@ function shareOrigin() {
 }
 
 function phaseLabel(phase) {
-  if (phase === "playing") return "bezig";
-  if (phase === "finished") return "afgelopen";
+  if (phase === "waiting") return t("phaseWaiting");
+  if (phase === "playing") return t("phasePlaying");
+  if (phase === "finished") return t("phaseFinished");
   return phase;
 }
 
 function cleanName(value) {
-  return value.trim().slice(0, 18) || "Speler";
+  return value.trim().slice(0, 18) || t("playerPlaceholder");
 }
 
 function cleanRoomCode(value) {

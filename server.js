@@ -236,6 +236,8 @@ function handleAction(room, player, body) {
     room.chosenSuit = card.rank === "J" ? body.chosenSuit : null;
     if (room.freePlayPlayerId === player.id) room.freePlayPlayerId = null;
     applyCardEffect(room, card);
+    const swapEvent = room.lastEvent?.type === "swap" ? room.lastEvent : null;
+    setEvent(room, { type: "play", from: player.id, card, swapMapping: swapEvent?.mapping || null });
 
     if (player.hand.length === 0) {
       room.phase = "finished";
@@ -272,6 +274,8 @@ function playBotTurn(room) {
   room.chosenSuit = card.rank === "J" ? chooseBotSuit(bot, room.botDifficulty) : null;
   if (room.freePlayPlayerId === bot.id) room.freePlayPlayerId = null;
   applyCardEffect(room, card);
+  const swapEvent = room.lastEvent?.type === "swap" ? room.lastEvent : null;
+  setEvent(room, { type: "play", from: bot.id, card, swapMapping: swapEvent?.mapping || null });
 
   if (bot.hand.length === 0) {
     room.phase = "finished";
@@ -463,8 +467,9 @@ function publicState(room, sessionId) {
       }
     : null;
   const nextPlayer = room.phase === "playing" ? room.players[nextIndex(room, room.current)] : null;
-  const viewerSwap = room.lastEvent?.type === "swap"
-    ? room.lastEvent.mapping.find((item) => item.to === sessionId)
+  const swapMapping = room.lastEvent?.type === "swap" ? room.lastEvent.mapping : room.lastEvent?.swapMapping;
+  const viewerSwap = swapMapping
+    ? swapMapping.find((item) => item.to === sessionId)
     : null;
   const viewerSwapFrom = viewerSwap
     ? room.players.find((player) => player.id === viewerSwap.from)?.name || "Speler"
@@ -658,9 +663,9 @@ function cleanBotDifficulty(difficulty) {
 }
 
 function botName(difficulty) {
-  if (difficulty === "easy") return "Bot Makkelijk";
-  if (difficulty === "hard") return "Bot Moeilijk";
-  return "Bot Gemiddeld";
+  if (difficulty === "easy") return "Easy Bot";
+  if (difficulty === "hard") return "Hard Bot";
+  return "Medium Bot";
 }
 
 function sortCards(a, b) {
