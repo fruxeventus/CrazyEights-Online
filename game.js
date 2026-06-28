@@ -17,6 +17,7 @@ const roomCodeInput = $("#roomCodeInput");
 const playerCount = $("#playerCount");
 const botDifficulty = $("#botDifficulty");
 const botButton = $("#botButton");
+const tutorialButton = $("#tutorialButton");
 const connection = $("#connection");
 const roomCodeLabel = $("#roomCodeLabel");
 const statusLabel = $("#statusLabel");
@@ -24,6 +25,9 @@ const opponents = $("#opponents");
 const deckCount = $("#deckCount");
 const discard = $("#discard");
 const message = $("#message");
+const tutorialPanel = $("#tutorialPanel");
+const tutorialTitle = $("#tutorialTitle");
+const tutorialText = $("#tutorialText");
 const turnInfo = $("#turnInfo");
 const hand = $("#hand");
 const youLabel = $("#youLabel");
@@ -95,6 +99,14 @@ const translations = {
     medium: "Medium",
     hard: "Hard",
     playBot: "Play against bot",
+    tutorialBot: "Start tutorial bot",
+    tutorialTitle: "Tutorial bot",
+    tutorialStart: "Click 5 of spades. It matches the 5 on the table.",
+    tutorialAfterPlay: "Nice. You played a card. You can undo it, or press Finish turn to let the bot play.",
+    tutorialGoAgain: "This card gives another turn. Follow the highlighted card, or finish your turn.",
+    tutorialBotTurn: "Watch the bot. Its hand is visible so you can see what it chooses.",
+    tutorialDraw: "You cannot play. Draw a card from the deck.",
+    tutorialContinue: "Follow the highlighted card, then press Finish turn when you are done.",
     joinCodeTitle: "Join with code",
     joinCodeCopy: "Use the name above and type your friend's room code.",
     roomCode: "Room code",
@@ -189,6 +201,14 @@ translations.nl = {
   medium: "Gemiddeld",
   hard: "Moeilijk",
   playBot: "Speel tegen bot",
+  tutorialBot: "Start tutorial bot",
+  tutorialTitle: "Tutorial bot",
+  tutorialStart: "Klik op schoppen 5. Die past op de 5 op tafel.",
+  tutorialAfterPlay: "Goed. Je hebt een kaart gelegd. Je kunt ongedaan maken of op Beurt klaar drukken.",
+  tutorialGoAgain: "Deze kaart geeft nog een beurt. Volg de gemarkeerde kaart of maak je beurt af.",
+  tutorialBotTurn: "Kijk naar de bot. Zijn hand is zichtbaar zodat je ziet wat hij kiest.",
+  tutorialDraw: "Je kunt niet spelen. Pak een kaart van de stapel.",
+  tutorialContinue: "Volg de gemarkeerde kaart en druk op Beurt klaar als je klaar bent.",
   joinCodeTitle: "Meedoen met code",
   joinCodeCopy: "Gebruik de naam hierboven en typ de kamercode van je vriend.",
   roomCode: "Kamercode",
@@ -364,6 +384,7 @@ const suitNames = {
 
 suitSymbols.joker = "*";
 suitNames.joker = "Joker";
+const goAgainRanksClient = new Set(["7", "K", "8"]);
 
 languageSelect.value = translations[language] ? language : "en";
 language = languageSelect.value;
@@ -401,6 +422,15 @@ botButton.addEventListener("click", async () => {
     difficulty: botDifficulty.value,
     sessionId,
   });
+  setRoomUrl(result.code, sessionId);
+  enterRoom(result.code);
+});
+
+tutorialButton.addEventListener("click", async () => {
+  const name = cleanName(createName.value);
+  localStorage.setItem("pesten-name", name);
+  sessionId = crypto.randomUUID();
+  const result = await api("/api/create-tutorial", { name, sessionId });
   setRoomUrl(result.code, sessionId);
   enterRoom(result.code);
 });
@@ -609,6 +639,8 @@ function applyLanguage() {
   startButton.textContent = t("startGame");
   homeRulesTitle.textContent = t("rulesTitle");
   homeRulesText.innerHTML = t("rulesText");
+  homeRulesText.append(tutorialButton);
+  tutorialButton.textContent = t("tutorialBot");
   roomRulesTitle.textContent = t("rulesRoomTitle");
   roomRulesText.innerHTML = t("rulesRoomText");
   chatPanel.querySelector(".eyebrow").textContent = t("chat");
@@ -653,6 +685,7 @@ function render() {
   const mustDraw = isMyTurn && state.mustDrawPlayerId === me?.id;
 
   roomScreen.classList.toggle("bot-room", Boolean(state.botMode));
+  roomScreen.classList.toggle("tutorial-room", Boolean(state.tutorialMode));
   roomCodeLabel.textContent = state.code;
   statusLabel.textContent = state.phase === "waiting" ? t("waitingStatus", { count: state.players.length, max: state.maxPlayers }) : phaseLabel(state.phase);
   youLabel.textContent = me ? me.name : t("you");
@@ -676,10 +709,14 @@ function render() {
       const offline = player.connected ? "" : " offline";
       const you = player.isYou ? " (jij)" : "";
       const presence = player.isBot ? "bot" : player.connected ? "verbonden" : "offline";
+      const visibleHand = player.hand
+        ? `<div class="visible-bot-hand">${player.hand.map((card) => cardHtml(card, "tiny")).join("")}</div>`
+        : "";
       return `<article class="player${active}${offline}" data-player-id="${escapeHtml(player.id)}">
         <strong>${escapeHtml(player.name)}${you}</strong>
         <span>${player.handCount} kaarten</span>
         <span class="presence">${presence}</span>
+        ${visibleHand}
       </article>`;
     })
     .join("");
@@ -726,6 +763,7 @@ function render() {
   }
 
   if (state.notice) message.textContent = state.notice.text;
+  renderTutorial(state);
   if (!state.botMode) renderChat(state);
   renderWinScreen(state);
   animateStateChanges(lastRenderedState, state);
@@ -767,6 +805,46 @@ function renderChat(nextState) {
     </article>`)
     .join("");
   if (wasNearBottom) chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function renderTutorial(nextState) {
+  tutorialPanel.classList.toggle("hidden", !nextState.tutorialMode);
+  roomScreen.classList.remove("tutorial-point-hand", "tutorial-point-deck", "tutorial-point-finish", "tutorial-point-bot");
+  if (!nextState.tutorialMode) return;
+
+  const me = nextState.players.find((player) => player.isYou);
+  const isMyTurn = me && nextState.currentPlayerId === me.id && nextState.phase === "playing";
+  tutorialTitle.textContent = t("tutorialTitle");
+
+  if (!isMyTurn) {
+    tutorialText.textContent = t("tutorialBotTurn");
+    roomScreen.classList.add("tutorial-point-bot");
+    return;
+  }
+
+  if (nextState.canUndo) {
+    const topRank = nextState.topCard?.rank;
+    tutorialText.textContent = goAgainRanksClient.has(topRank)
+      ? t("tutorialGoAgain")
+      : t("tutorialAfterPlay");
+    roomScreen.classList.add("tutorial-point-finish");
+    return;
+  }
+
+  if (nextState.playableCardIds.includes("5-spades")) {
+    tutorialText.textContent = t("tutorialStart");
+    roomScreen.classList.add("tutorial-point-hand");
+    return;
+  }
+
+  if (nextState.playableCardIds.length === 0) {
+    tutorialText.textContent = t("tutorialDraw");
+    roomScreen.classList.add("tutorial-point-deck");
+    return;
+  }
+
+  tutorialText.textContent = t("tutorialContinue");
+  roomScreen.classList.add("tutorial-point-hand");
 }
 
 function playerColor(playerId) {

@@ -323,9 +323,59 @@ button:disabled {
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 12px;
+  position: relative;
   background:
     linear-gradient(120deg, rgba(74, 222, 128, 0.08), transparent),
     rgba(9, 28, 22, 0.9);
+}
+
+.tutorial-panel {
+  border: 1px solid rgba(247, 201, 72, 0.55);
+  border-radius: 8px;
+  background: rgba(247, 201, 72, 0.12);
+  padding: 10px 12px;
+  color: var(--ink);
+  display: grid;
+  gap: 4px;
+}
+
+.tutorial-panel p {
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.tutorial-room .tutorial-panel::before {
+  content: "↓";
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #1f1605;
+  font-weight: 900;
+}
+
+.tutorial-point-hand .hand-wrap,
+.tutorial-point-deck .deck,
+.tutorial-point-finish .finish-action,
+.tutorial-point-bot .opponents {
+  outline: 3px solid var(--gold);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 8px rgba(247, 201, 72, 0.12);
+}
+
+.tutorial-point-hand .tutorial-panel::before {
+  content: "↓";
+}
+
+.tutorial-point-deck .tutorial-panel::before,
+.tutorial-point-finish .tutorial-panel::before {
+  content: "↙";
+}
+
+.tutorial-point-bot .tutorial-panel::before {
+  content: "↑";
 }
 
 .opponents {
@@ -362,6 +412,14 @@ button:disabled {
 .player span {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.visible-bot-hand {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .presence {
@@ -402,6 +460,21 @@ button:disabled {
   width: 92px;
   height: 128px;
   border-radius: 8px;
+}
+
+.card.tiny {
+  width: 34px;
+  height: 48px;
+  min-height: 0;
+  border-radius: 5px;
+  font-size: 0.55rem;
+  padding: 3px;
+  flex: 0 0 auto;
+}
+
+.card.tiny .middle,
+.card.tiny .bottom {
+  display: none;
 }
 
 .deck {
@@ -871,6 +944,11 @@ button:disabled {
 
 .rules-body strong {
   color: var(--ink);
+}
+
+.tutorial-start {
+  width: min(240px, 100%);
+  margin-top: 2px;
 }
 
 .chat-panel {

@@ -95,6 +95,7 @@
               <li>If you cannot play, draw a card from the deck.</li>
               <li>Some cards have special effects, like skipping, reversing, or making someone draw cards.</li>
             </ul>
+            <button class="secondary tutorial-start" id="tutorialButton" type="button">Start tutorial bot</button>
           </div>
         </details>
       </section>
@@ -121,6 +122,11 @@
         </section>
 
         <section class="table">
+          <div class="tutorial-panel hidden" id="tutorialPanel">
+            <strong id="tutorialTitle">Tutorial</strong>
+            <p id="tutorialText">Follow the arrows to learn the game.</p>
+          </div>
+
           <div class="opponents" id="opponents"></div>
 
           <div class="center-table">

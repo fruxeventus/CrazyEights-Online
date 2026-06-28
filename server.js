@@ -145,6 +145,45 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (req.url === "/api/create-tutorial") {
+    const code = makeCode();
+    const player = makePlayer(body.sessionId, body.name, true);
+    const bot = makePlayer(`bot-${code}`, "Tutorial Bot", false, true);
+    const room = {
+      code,
+      maxPlayers: 2,
+      hostId: player.id,
+      players: [player, bot],
+      phase: "playing",
+      deck: [],
+      discard: [],
+      current: 0,
+      direction: 1,
+      chosenSuit: null,
+      pendingDraw: 0,
+      pendingDrawRank: null,
+      freePlayPlayerId: null,
+      winnerId: null,
+      botMode: true,
+      tutorialMode: true,
+      botDifficulty: "easy",
+      notice: null,
+      mustDrawPlayerId: null,
+      mustDrawSince: null,
+      resolvingForcedDraw: false,
+      turnHistory: [],
+      winnerReason: null,
+      chat: [],
+      lastEvent: null,
+      eventId: 0,
+      createdAt: Date.now(),
+    };
+    setupTutorialGame(room);
+    rooms.set(code, room);
+    sendJson(res, 200, { code });
+    return;
+  }
+
   if (req.url === "/api/join") {
     const code = cleanCode(body.code);
     const room = getRoom(code);
@@ -312,6 +351,7 @@ function playBotTurn(room) {
 }
 
 function chooseBotCard(room, bot, playable) {
+  if (room.tutorialMode) return playable[0];
   if (room.botDifficulty === "easy") return playable[Math.floor(Math.random() * playable.length)];
 
   const scored = playable.map((card) => ({ card, score: botCardScore(card, bot, room) }));
@@ -377,6 +417,50 @@ function startGame(room) {
   room.discard.push(first);
   validateCards(room);
   updateMustDraw(room);
+}
+
+function setupTutorialGame(room) {
+  const used = new Set();
+  const take = (id) => {
+    used.add(id);
+    return cardById(id);
+  };
+  room.players[0].hand = [
+    take("5-spades"),
+    take("7-spades"),
+    take("K-hearts"),
+    take("J-clubs"),
+    take("2-diamonds"),
+    take("Joker-red"),
+    take("9-clubs"),
+  ];
+  room.players[1].hand = [
+    take("3-spades"),
+    take("8-spades"),
+    take("A-hearts"),
+    take("10-clubs"),
+    take("4-diamonds"),
+    take("Q-hearts"),
+    take("6-clubs"),
+  ];
+  room.discard = [take("5-hearts")];
+  room.deck = shuffle(makeDeck().filter((card) => !used.has(card.id)));
+  room.current = 0;
+  room.direction = 1;
+  room.chosenSuit = null;
+  room.pendingDraw = 0;
+  room.pendingDrawRank = null;
+  room.freePlayPlayerId = null;
+  room.turnHistory = [];
+  room.lastEvent = null;
+  room.eventId = 0;
+  validateCards(room);
+}
+
+function cardById(id) {
+  const card = makeDeck().find((item) => item.id === id);
+  if (!card) throw new PublicError(`Tutorial kaart ontbreekt: ${id}`);
+  return { ...card };
 }
 
 function drawForTurn(room, player, endTurn) {
@@ -587,6 +671,7 @@ function publicState(room, sessionId) {
     maxPlayers: room.maxPlayers,
     phase: room.phase,
     botMode: Boolean(room.botMode),
+    tutorialMode: Boolean(room.tutorialMode),
     botDifficulty: room.botDifficulty,
     isHost: room.hostId === sessionId,
     canUseHostTools: canUseHostTools(room, me),
@@ -616,6 +701,7 @@ function publicState(room, sessionId) {
       isYou: player.id === sessionId,
       isBot: Boolean(player.isBot),
       connected: player.isBot || now - player.connectedAt < disconnectedAfterMs,
+      hand: room.tutorialMode && player.isBot ? [...player.hand].sort(sortCards) : undefined,
     })),
     hand,
     playableCardIds: hand.filter((card) => canViewerPlayAnother && isPlayable(room, card, me)).map((card) => card.id),
