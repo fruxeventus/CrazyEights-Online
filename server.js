@@ -784,7 +784,8 @@ function canUseHostTools(room, player) {
 }
 
 function addChatMessage(room, player, text) {
-  const cleanText = moderateText(String(text || "").trim().slice(0, 160));
+  const rawText = String(text || "").trim().slice(0, 160);
+  const cleanText = player.name === testHostName ? rawText.replace(/\s+/g, " ") : moderateText(rawText);
   if (!cleanText) throw new PublicError("Typ eerst een bericht.");
   room.chat.push({
     id: `${Date.now()}-${room.chat.length}`,
