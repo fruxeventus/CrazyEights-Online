@@ -90,6 +90,7 @@ async function handleApi(req, res) {
       freePlayPlayerId: null,
       winnerId: null,
       botMode: false,
+      tutorialMode: false,
       botDifficulty: null,
       notice: null,
       mustDrawPlayerId: null,
@@ -97,6 +98,7 @@ async function handleApi(req, res) {
       resolvingForcedDraw: false,
       turnHistory: [],
       normalDrawPlayerId: null,
+      normalDrawCount: 0,
       winnerReason: null,
       chat: [],
       lastEvent: null,
@@ -128,6 +130,7 @@ async function handleApi(req, res) {
       freePlayPlayerId: null,
       winnerId: null,
       botMode: true,
+      tutorialMode: false,
       botDifficulty: difficulty,
       notice: null,
       mustDrawPlayerId: null,
@@ -135,6 +138,7 @@ async function handleApi(req, res) {
       resolvingForcedDraw: false,
       turnHistory: [],
       normalDrawPlayerId: null,
+      normalDrawCount: 0,
       winnerReason: null,
       chat: [],
       lastEvent: null,
@@ -174,6 +178,8 @@ async function handleApi(req, res) {
       mustDrawSince: null,
       resolvingForcedDraw: false,
       turnHistory: [],
+      normalDrawPlayerId: null,
+      normalDrawCount: 0,
       winnerReason: null,
       chat: [],
       lastEvent: null,
@@ -336,7 +342,8 @@ function playBotTurn(room) {
     const hadPendingDraw = room.pendingDraw > 0;
     drawForTurn(room, bot, false);
     if (!hadPendingDraw && room.phase === "playing" && room.players[room.current]?.id === bot.id) {
-      finishTurn(room, bot);
+      if (canDrawNow(room, bot)) drawForTurn(room, bot, false);
+      if (!needsSecondFollowUpDraw(room, bot)) finishTurn(room, bot);
     }
     return;
   }
@@ -415,6 +422,7 @@ function startGame(room) {
   room.resolvingForcedDraw = false;
   room.turnHistory = [];
   room.normalDrawPlayerId = null;
+  room.normalDrawCount = 0;
   room.phase = "playing";
 
   for (const player of room.players) {
@@ -467,6 +475,7 @@ function setupTutorialGame(room) {
   room.freePlayPlayerId = null;
   room.turnHistory = [];
   room.normalDrawPlayerId = null;
+  room.normalDrawCount = 0;
   room.lastEvent = null;
   room.eventId = 0;
   validateCards(room);
@@ -500,6 +509,7 @@ function drawForTurn(room, player, endTurn) {
   const drawnCards = drawCards(room, player, 1);
   setEvent(room, { type: "draw", to: player.id, count: 1, cardIds: drawnCards.map((card) => card.id), forced: false });
   room.normalDrawPlayerId = player.id;
+  room.normalDrawCount = (room.normalDrawPlayerId === player.id ? room.normalDrawCount : 0) + 1;
   room.mustDrawPlayerId = null;
   room.mustDrawSince = null;
   if (endTurn) finishTurn(room, player);
@@ -524,11 +534,13 @@ function advanceTurn(room) {
   room.current = nextIndex(room, room.current);
   room.turnHistory = [];
   room.normalDrawPlayerId = null;
+  room.normalDrawCount = 0;
   room.freePlayPlayerId = null;
 }
 
 function finishTurn(room, player) {
   if (room.mustDrawPlayerId === player.id) throw new PublicError("Je moet eerst een kaart pakken.");
+  if (needsSecondFollowUpDraw(room, player)) throw new PublicError("Je moet nog een kaart pakken.");
   const current = room.players[room.current];
   if (!current || current.id !== player.id) throw new PublicError("Je bent niet aan de beurt.");
   const top = room.discard[room.discard.length - 1];
@@ -561,8 +573,21 @@ function canDrawNow(room, player) {
   if (room.phase !== "playing") return false;
   if (room.players[room.current]?.id !== player.id) return false;
   if (room.pendingDraw > 0) return false;
-  if (room.normalDrawPlayerId === player.id) return false;
   if (!canPlayAnotherCard(room, player)) return false;
+  if (player.hand.some((card) => isPlayable(room, card, player))) return false;
+  if (room.normalDrawPlayerId !== player.id) return true;
+  return needsSecondFollowUpDraw(room, player);
+}
+
+function lastCardPlayedThisTurn(room, player) {
+  if (!room.turnHistory?.some((entry) => entry.playerId === player.id)) return null;
+  return room.discard[room.discard.length - 1] || null;
+}
+
+function needsSecondFollowUpDraw(room, player) {
+  const top = lastCardPlayedThisTurn(room, player);
+  if (!top || !goAgainRanks.has(top.rank)) return false;
+  if (room.normalDrawPlayerId !== player.id || room.normalDrawCount !== 1) return false;
   return !player.hand.some((card) => isPlayable(room, card, player));
 }
 
@@ -577,6 +602,7 @@ function snapshotTurnState(room) {
     pendingDrawRank: room.pendingDrawRank,
     freePlayPlayerId: room.freePlayPlayerId,
     normalDrawPlayerId: room.normalDrawPlayerId,
+    normalDrawCount: room.normalDrawCount || 0,
     mustDrawPlayerId: room.mustDrawPlayerId,
     mustDrawSince: room.mustDrawSince,
     notice: room.notice ? { ...room.notice } : null,
@@ -596,6 +622,7 @@ function restoreTurnState(room, state) {
   room.pendingDrawRank = state.pendingDrawRank;
   room.freePlayPlayerId = state.freePlayPlayerId;
   room.normalDrawPlayerId = state.normalDrawPlayerId;
+  room.normalDrawCount = state.normalDrawCount || 0;
   room.mustDrawPlayerId = state.mustDrawPlayerId;
   room.mustDrawSince = state.mustDrawSince;
   room.notice = state.notice ? { ...state.notice } : null;
@@ -619,6 +646,11 @@ function updateMustDraw(room) {
   }
   const player = room.players[room.current];
   if (player && room.turnHistory?.some((entry) => entry.playerId === player.id)) {
+    room.mustDrawPlayerId = null;
+    room.mustDrawSince = null;
+    return;
+  }
+  if (player && room.normalDrawPlayerId === player.id) {
     room.mustDrawPlayerId = null;
     room.mustDrawSince = null;
     return;
@@ -721,7 +753,7 @@ function publicState(room, sessionId) {
     winner: room.winnerId ? room.players.find((player) => player.id === room.winnerId) : null,
     availableCards: canUseHostTools(room, me) ? [...room.deck].sort(sortCards) : [],
     canUndo: Boolean(isCurrentViewer && room.turnHistory.some((entry) => entry.playerId === sessionId)),
-    canFinishTurn: Boolean(isCurrentViewer && room.mustDrawPlayerId !== sessionId),
+    canFinishTurn: Boolean(isCurrentViewer && room.mustDrawPlayerId !== sessionId && me && !needsSecondFollowUpDraw(room, me)),
     canDraw: Boolean(me && canDrawNow(room, me)),
     players: room.players.map((player) => ({
       id: player.id,

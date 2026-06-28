@@ -18,6 +18,9 @@ const playerCount = $("#playerCount");
 const botDifficulty = $("#botDifficulty");
 const botButton = $("#botButton");
 const tutorialButton = $("#tutorialButton");
+const tutorialHomePanel = $("#tutorialHomePanel");
+const tutorialHomeTitle = $("#tutorialHomeTitle");
+const tutorialHomeCopy = $("#tutorialHomeCopy");
 const connection = $("#connection");
 const roomCodeLabel = $("#roomCodeLabel");
 const statusLabel = $("#statusLabel");
@@ -103,6 +106,8 @@ const translations = {
     hard: "Hard",
     playBot: "Play against bot",
     tutorialBot: "Start tutorial bot",
+    tutorialHomeTitle: "Learn with a bot",
+    tutorialHomeCopy: "A guided game shows the board, the bot's open hand, and what to do next.",
     tutorialTitle: "Tutorial bot",
     tutorialStart: "Click 5 of spades. It matches the 5 on the table.",
     tutorialAfterPlay: "Nice. You played a card. You can undo it, or press Finish turn to let the bot play.",
@@ -150,7 +155,7 @@ const translations = {
     finishTurn: "Finish turn",
     startGame: "Start game",
     rulesTitle: "How to play",
-    rulesText: `<p><strong>Goal:</strong> be the first player with no cards left.</p><ul><li>On your turn, play one card on the discard pile.</li><li>Your card must match the top card by suit or by rank.</li><li>If you cannot play, draw a card from the deck.</li><li>Special cards can skip, reverse, give extra turns, swap hands, or make someone draw cards.</li></ul>`,
+    rulesText: `<p><strong>Goal:</strong> be the first player with no cards left.</p><p>On your turn, play a glowing card onto the discard pile. Your card must match the top card by suit or by rank, unless a special card says otherwise.</p><ul><li>If no card glows at the start of your turn, draw one card, then finish your turn.</li><li>If you played a 7 or King and cannot play a follow-up card, draw once. If you still cannot play, draw one more card, then finish your turn.</li><li>Use Undo to take back cards played during your current turn. Press Finish turn when you are done.</li><li>Hover over a card to see its effect.</li></ul>`,
     rulesRoomTitle: "How to play",
     rulesRoomText: `<p><strong>Goal:</strong> be the first player with no cards left.</p><ul><li>Match the top card by suit or rank.</li><li>Draw from the deck if you cannot play.</li><li>Jack lets you choose a suit. Joker can always be played.</li><li>2 makes the next player draw two cards. Jokers add five cards.</li><li>7 and King give you another turn. 8 skips. Ace reverses. 10 rotates hands.</li></ul>`,
     chat: "Chat",
@@ -180,6 +185,7 @@ const translations = {
     yourStackTurn: "It is your turn. Play a {card}.",
     autoDraw: "You cannot play a {card}. The game will draw {count} cards soon.",
     cannotPlay: "You cannot play. Draw a card.",
+    cannotPlayAnymore: "You cannot play anymore. Finish your turn.",
     currentTurn: "{name}'s turn.",
     overlayTurn: "{name}'s turn",
     invitedRoom: "You were invited to room {room}.",
@@ -196,6 +202,11 @@ const translations = {
     youWonText: "Nice game. You got rid of all your cards.",
     winnerText: "The game is over.",
     disconnectedWinText: "The other players disconnected.",
+    cardCount: "{count} cards",
+    youSuffix: " (you)",
+    bot: "bot",
+    connectedWord: "connected",
+    offline: "offline",
   },
 };
 
@@ -221,6 +232,8 @@ translations.nl = {
   hard: "Moeilijk",
   playBot: "Speel tegen bot",
   tutorialBot: "Start tutorial bot",
+  tutorialHomeTitle: "Leer met een bot",
+  tutorialHomeCopy: "Een begeleid spel laat de tafel, de open hand van de bot en je volgende stap zien.",
   tutorialTitle: "Tutorial bot",
   tutorialStart: "Klik op schoppen 5. Die past op de 5 op tafel.",
   tutorialAfterPlay: "Goed. Je hebt een kaart gelegd. Je kunt ongedaan maken of op Beurt klaar drukken.",
@@ -268,7 +281,7 @@ translations.nl = {
   finishTurn: "Beurt klaar",
   startGame: "Start spel",
   rulesTitle: "Zo speel je",
-  rulesText: `<p><strong>Doel:</strong> raak als eerste al je kaarten kwijt.</p><ul><li>Als je aan de beurt bent, leg je een kaart op de aflegstapel.</li><li>Je kaart moet dezelfde soort of waarde hebben als de bovenste kaart.</li><li>Kun je niet spelen, dan pak je een kaart van de stapel.</li><li>Speciale kaarten kunnen overslaan, omdraaien, extra beurten geven, handen wisselen of iemand kaarten laten pakken.</li></ul>`,
+  rulesText: `<p><strong>Doel:</strong> raak als eerste al je kaarten kwijt.</p><p>Als je aan de beurt bent, leg je een oplichtende kaart op de aflegstapel. Je kaart moet dezelfde soort of waarde hebben als de bovenste kaart, behalve als een speciale kaart iets anders doet.</p><ul><li>Licht er aan het begin van je beurt niets op, pak dan een kaart en maak daarna je beurt af.</li><li>Heb je een 7 of Heer gelegd en kun je geen vervolgkaart leggen, pak dan een kaart. Kun je daarna nog steeds niet spelen, pak nog een kaart en maak je beurt af.</li><li>Met Ongedaan haal je kaarten uit je huidige beurt terug. Druk op Beurt klaar als je klaar bent.</li><li>Hover over een kaart om te zien wat die doet.</li></ul>`,
   rulesRoomTitle: "Zo speel je",
   rulesRoomText: `<p><strong>Doel:</strong> raak als eerste al je kaarten kwijt.</p><ul><li>Leg dezelfde soort of waarde op de bovenste kaart.</li><li>Pak een kaart als je niet kunt spelen.</li><li>Boer laat je een soort kiezen. Joker mag altijd.</li><li>2 laat de volgende speler twee kaarten pakken. Jokers tellen vijf kaarten erbij.</li><li>7 en Heer geven nog een beurt. 8 slaat over. Aas draait om. 10 wisselt handen.</li></ul>`,
   messages: "Berichten",
@@ -295,6 +308,7 @@ translations.nl = {
   yourStackTurn: "Jij bent aan de beurt. Leg een {card}.",
   autoDraw: "Je kan geen {card} leggen. Het spel pakt zo {count} kaarten.",
   cannotPlay: "Je kan niet. Pak een kaart.",
+  cannotPlayAnymore: "Je kan niet meer spelen. Maak je beurt af.",
   currentTurn: "{name} is aan de beurt.",
   overlayTurn: "{name} is aan de beurt",
   invitedRoom: "Je bent uitgenodigd voor kamer {room}.",
@@ -311,6 +325,11 @@ translations.nl = {
   youWonText: "Lekker gespeeld. Je bent al je kaarten kwijt.",
   winnerText: "Het spel is afgelopen.",
   disconnectedWinText: "De andere spelers zijn weg.",
+  cardCount: "{count} kaarten",
+  youSuffix: " (jij)",
+  bot: "bot",
+  connectedWord: "verbonden",
+  offline: "offline",
 };
 
 translations.fr = {
@@ -321,6 +340,7 @@ translations.fr = {
   connectedNone: "Non connecte",
   connected: "Connecte",
   homeTitle: "Creez une partie et partagez le lien",
+  homeCopy: "Choisissez combien de joueurs peuvent rejoindre, creez une partie, puis envoyez le lien a vos amis.",
   play: "Jouer",
   yourName: "Votre nom",
   maxPlayers: "Nombre maximum de joueurs",
@@ -330,6 +350,8 @@ translations.fr = {
   medium: "Moyen",
   hard: "Difficile",
   playBot: "Jouer contre le bot",
+  tutorialHomeTitle: "Apprendre avec un bot",
+  tutorialHomeCopy: "Une partie guidee montre la table, la main ouverte du bot et la prochaine action.",
   joinCodeTitle: "Rejoindre avec un code",
   joinCode: "Rejoindre avec le code",
   back: "Retour",
@@ -341,6 +363,10 @@ translations.fr = {
   chat: "Chat",
   messages: "Messages",
   send: "Envoyer",
+  cardCount: "{count} cartes",
+  youSuffix: " (vous)",
+  connectedWord: "connecte",
+  offline: "hors ligne",
 };
 
 translations.de = {
@@ -351,6 +377,7 @@ translations.de = {
   connectedNone: "Nicht verbunden",
   connected: "Verbunden",
   homeTitle: "Raum erstellen und Link teilen",
+  homeCopy: "Wahle, wie viele Spieler beitreten koennen, erstelle einen Raum und sende den Link an deine Freunde.",
   play: "Spielen",
   yourName: "Dein Name",
   maxPlayers: "Maximale Spielerzahl",
@@ -360,6 +387,8 @@ translations.de = {
   medium: "Mittel",
   hard: "Schwer",
   playBot: "Gegen Bot spielen",
+  tutorialHomeTitle: "Mit Bot lernen",
+  tutorialHomeCopy: "Ein gefuhrtes Spiel zeigt den Tisch, die offene Bot-Hand und den nachsten Schritt.",
   joinCodeTitle: "Mit Code beitreten",
   joinCode: "Mit Code beitreten",
   back: "Zuruck",
@@ -371,6 +400,10 @@ translations.de = {
   chat: "Chat",
   messages: "Nachrichten",
   send: "Senden",
+  cardCount: "{count} Karten",
+  youSuffix: " (du)",
+  connectedWord: "verbunden",
+  offline: "offline",
 };
 
 translations.zh = {
@@ -695,7 +728,8 @@ function applyLanguage() {
   startButton.textContent = t("startGame");
   homeRulesTitle.textContent = t("rulesTitle");
   homeRulesText.innerHTML = t("rulesText");
-  homeRulesText.append(tutorialButton);
+  tutorialHomeTitle.textContent = t("tutorialHomeTitle");
+  tutorialHomeCopy.textContent = t("tutorialHomeCopy");
   tutorialButton.textContent = t("tutorialBot");
   roomRulesTitle.textContent = t("rulesRoomTitle");
   roomRulesText.innerHTML = t("rulesRoomText");
@@ -764,14 +798,14 @@ function render() {
     .map((player) => {
       const active = player.id === state.currentPlayerId ? " active" : "";
       const offline = player.connected ? "" : " offline";
-      const you = player.isYou ? " (jij)" : "";
-      const presence = player.isBot ? "bot" : player.connected ? "verbonden" : "offline";
+      const you = player.isYou ? t("youSuffix") : "";
+      const presence = player.isBot ? t("bot") : player.connected ? t("connectedWord") : t("offline");
       const visibleHand = player.hand
         ? `<div class="visible-bot-hand">${player.hand.map((card) => cardHtml(card, "tiny")).join("")}</div>`
         : "";
       return `<article class="player${active}${offline}" data-player-id="${escapeHtml(player.id)}">
         <strong>${escapeHtml(player.name)}${you}</strong>
-        <span>${player.handCount} kaarten</span>
+        <span>${t("cardCount", { count: player.handCount })}</span>
         <span class="presence">${presence}</span>
         ${visibleHand}
       </article>`;
@@ -809,15 +843,17 @@ function render() {
     message.textContent = t("tourNext");
   } else if (isMyTurn) {
     const stackCard = state.pendingDrawRank === "Joker" ? "joker" : "2";
-    message.textContent = state.pendingDraw > 0
-      ? mustDraw
+    if (state.pendingDraw > 0) {
+      message.textContent = mustDraw
         ? t("autoDraw", { card: stackCard, count: state.pendingDraw })
-        : t("yourStackTurn", { card: stackCard })
-      : mustDraw || cannotPlay
-        ? t("cannotPlay")
-        : state.canUndo
-          ? t("yourTurn")
-          : t("yourTurn");
+        : t("yourStackTurn", { card: stackCard });
+    } else if (mustDraw || (cannotPlay && state.canDraw)) {
+      message.textContent = t("cannotPlay");
+    } else if (cannotPlay && state.canFinishTurn && state.canUndo) {
+      message.textContent = t("cannotPlayAnymore");
+    } else {
+      message.textContent = t("yourTurn");
+    }
   } else {
     message.textContent = current ? t("currentTurn", { name: current.name }) : t("waiting");
   }
@@ -841,6 +877,7 @@ function renderJoin(errorText = "") {
   heroCopy.textContent = t("joinCopy");
   createForm.classList.add("hidden");
   codeJoinForm.classList.add("hidden");
+  tutorialHomePanel.classList.add("hidden");
   joinForm.classList.remove("hidden");
   if (joinRenderedFor !== room) {
     joinName.value = "";
@@ -856,6 +893,7 @@ function renderCreateHome() {
   heroCopy.textContent = t("homeCopy");
   createForm.classList.remove("hidden");
   codeJoinForm.classList.remove("hidden");
+  tutorialHomePanel.classList.remove("hidden");
 }
 
 function renderChat(nextState) {
@@ -898,7 +936,9 @@ function eventMessage(nextState, me) {
 }
 
 function renderTutorial(nextState) {
-  tutorialPanel.classList.toggle("hidden", !nextState.tutorialMode);
+  const showTutorial = Boolean(nextState.tutorialMode);
+  tutorialPanel.hidden = !showTutorial;
+  tutorialPanel.classList.toggle("hidden", !showTutorial);
   roomScreen.classList.remove(
     "tutorial-tour",
     "tutorial-point-table",
@@ -907,7 +947,10 @@ function renderTutorial(nextState) {
     "tutorial-point-finish",
     "tutorial-point-bot"
   );
-  if (!nextState.tutorialMode) return;
+  if (!showTutorial) {
+    tutorialText.textContent = "";
+    return;
+  }
 
   const me = nextState.players.find((player) => player.isYou);
   const isMyTurn = me && nextState.currentPlayerId === me.id && nextState.phase === "playing";
@@ -1035,7 +1078,7 @@ function cardHelp(card) {
   if (card.rank === "A") return "Ace: reverses the play direction.";
   if (card.rank === "10") return "10: rotates everyone's hands.";
   if (card.rank === "J") return "Jack: choose the suit for the next player.";
-  return "Normal card: match by suit or rank, then finish your turn.";
+  return "No special ability. Match by suit or rank, then finish your turn.";
 }
 
 function animateStateChanges(previous, next) {

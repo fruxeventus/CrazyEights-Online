@@ -74,6 +74,13 @@
             <button type="submit">Join with code</button>
           </form>
 
+          <section class="panel tutorial-home-panel" id="tutorialHomePanel">
+            <span class="eyebrow">Tutorial</span>
+            <h3 id="tutorialHomeTitle">Learn with a bot</h3>
+            <p id="tutorialHomeCopy">Walk through the table, then play a guided open-hand bot game.</p>
+            <button class="secondary tutorial-start" id="tutorialButton" type="button">Start tutorial bot</button>
+          </section>
+
           <form class="panel hidden" id="joinForm">
             <h3>Join</h3>
             <p class="panel-copy">You were invited to a Crazy Eights game.</p>
@@ -85,8 +92,8 @@
           </form>
         </div>
 
-        <details class="rules home-rules" id="homeRules">
-          <summary id="homeRulesTitle">How to play</summary>
+        <section class="rules home-rules" id="homeRules">
+          <h3 id="homeRulesTitle">How to play</h3>
           <div class="rules-body" id="homeRulesText">
             <p><strong>Goal:</strong> be the first player with no cards left.</p>
             <ul>
@@ -95,9 +102,8 @@
               <li>If you cannot play, draw a card from the deck.</li>
               <li>Some cards have special effects, like skipping, reversing, or making someone draw cards.</li>
             </ul>
-            <button class="secondary tutorial-start" id="tutorialButton" type="button">Start tutorial bot</button>
           </div>
-        </details>
+        </section>
       </section>
 
       <section class="screen hidden" id="roomScreen">
